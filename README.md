@@ -56,7 +56,7 @@ cp .env.example .env
 ```env
 APP_SECRET_KEY=change-to-a-long-random-secret
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-this-password
+ADMIN_PASSWORD=admin
 
 XUI_HOST=http://127.0.0.1:2053
 XUI_USERNAME=your-3x-ui-username
@@ -139,7 +139,7 @@ https://redeem.example.com/admin/login
 
 ```env
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-this-password
+ADMIN_PASSWORD=admin
 ```
 
 登录后主要入口：

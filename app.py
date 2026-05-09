@@ -359,7 +359,7 @@ def init_db():
     cursor.execute("SELECT COUNT(*) AS total FROM admins")
     if cursor.fetchone()['total'] == 0:
         initial_admin_username = os.getenv('ADMIN_USERNAME', 'admin').strip() or 'admin'
-        initial_admin_password = os.getenv('ADMIN_PASSWORD', secrets.token_urlsafe(16))
+        initial_admin_password = os.getenv('ADMIN_PASSWORD', 'admin')
         password_hash = hash_password(initial_admin_password)
         cursor.execute(
             "INSERT INTO admins (username, password) VALUES (?, ?)",
