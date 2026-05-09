@@ -105,6 +105,10 @@ LDC_GATEWAY=https://credit.linux.do/epay
 
 ## 启动
 
+### 临时运行
+
+适合首次测试或排查问题，关闭 SSH 终端后进程会停止：
+
 ```bash
 ./start.sh
 ```
@@ -126,6 +130,54 @@ LDC_GATEWAY=https://credit.linux.do/epay
 ```text
 https://redeem.example.com/admin/login
 ```
+
+### 后台运行
+
+生产环境建议使用 `systemd` 托管进程，支持开机自启、异常后重启和统一查看日志。
+
+假设项目目录是 `/www/wwwroot/LDC-XUI-Redeem`，创建服务文件：
+
+```bash
+sudo tee /etc/systemd/system/ldc-xui-redeem.service >/dev/null <<'EOF'
+[Unit]
+Description=LDC-XUI-Redeem
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/www/wwwroot/LDC-XUI-Redeem
+ExecStart=/www/wwwroot/LDC-XUI-Redeem/start.sh
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+启动并设置开机自启：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ldc-xui-redeem.service
+```
+
+常用管理命令：
+
+```bash
+sudo systemctl status ldc-xui-redeem.service
+sudo systemctl restart ldc-xui-redeem.service
+sudo journalctl -u ldc-xui-redeem.service -f
+```
+
+如果只是临时想放到后台运行，也可以使用 `nohup`：
+
+```bash
+nohup ./start.sh >/tmp/ldc-xui-redeem.log 2>&1 &
+```
+
+`nohup` 不负责开机自启和异常重启，生产环境优先使用 `systemd`。
 
 ## 后台入口
 
@@ -219,7 +271,7 @@ ADMIN_PASSWORD=admin
 ## 生产部署建议
 
 - 使用 Nginx 反向代理到 `127.0.0.1:5000`。
-- 使用 systemd 或 supervisor 托管进程。
+- 使用 `systemd` 或 `supervisor` 托管进程，避免 SSH 断开后服务停止。
 - 配置 HTTPS。
 - 定期备份 `redeem.db`，但不要提交到 git。
 - 不要在公开环境暴露 3x-ui 面板。
