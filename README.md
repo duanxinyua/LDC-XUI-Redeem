@@ -121,6 +121,45 @@ LDC_GATEWAY=https://credit.linux.do/epay
 /admin/login
 ```
 
+如果你的站点域名是 `https://redeem.example.com`，完整后台登录地址就是：
+
+```text
+https://redeem.example.com/admin/login
+```
+
+## 后台入口
+
+后台登录入口：
+
+```text
+/admin/login
+```
+
+首次启动时，如果数据库中还没有管理员账号，系统会使用 `.env` 中的以下参数创建初始管理员：
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+```
+
+登录后主要入口：
+
+| 地址 | 功能 |
+| --- | --- |
+| `/admin` | 后台首页，查看兑换码、用户和最近兑换概览。 |
+| `/admin/settings` | 设置中心，管理 3x-ui 面板、LDC 兑换、Turnstile 和管理员账号。 |
+| `/admin/ldc-orders` | LDC 兑换记录，支持订单查询、同步、退款。 |
+| `/admin/ldc-tools` | LDC 商户分发工具。 |
+| `/admin/codes` | 兑换码列表和生成入口。 |
+| `/admin/users` | 已生成的订阅用户列表。 |
+
+注意事项：
+
+- `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 只在首次初始化数据库时生效。
+- 如果 `redeem.db` 已经存在，修改 `.env` 中的管理员账号密码不会覆盖数据库中的账号。
+- 已部署后如需修改后台账号，请登录后台后进入 `设置 -> 管理员账号` 修改。
+- 如果忘记后台密码，需要直接处理数据库中的 `admins` 表或删除数据库重新初始化；删除数据库会丢失兑换记录，不建议在生产环境这样做。
+
 ## 配置说明
 
 ### 3x-ui
