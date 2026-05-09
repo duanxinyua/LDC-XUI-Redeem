@@ -44,6 +44,28 @@ def format_dt(value):
     return text[:16] if text else '-'
 
 
+def parse_db_datetime(value):
+    """解析 SQLite 中保存的本地时间，解析失败时返回 None。"""
+    if isinstance(value, datetime):
+        return value
+    text = str(value or '').strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        try:
+            return datetime.strptime(text[:19], '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return None
+
+
+def is_datetime_expired(value):
+    """判断数据库时间是否已过期；无法解析时不主动拦截旧数据。"""
+    parsed = parse_db_datetime(value)
+    return bool(parsed and parsed <= local_now())
+
+
 def get_csrf_token():
     """获取当前会话的 CSRF Token。"""
     token = session.get('_csrf_token')
@@ -1094,6 +1116,8 @@ def build_result_from_order(order, inbounds=None):
     """从 LDC 订单记录构造结果"""
     if not order or not order['user_uuid']:
         return None
+    if order['refund_status'] == 'success':
+        return None
     return build_result_data(
         order['user_uuid'],
         order['user_email'],
@@ -1828,6 +1852,9 @@ def query_code():
         if not user:
             return jsonify({'success': False, 'msg': '未找到对应的用户信息'})
 
+        if is_datetime_expired(user['expire_at']):
+            return jsonify({'success': False, 'msg': '该订阅已过期'})
+
         inbounds = get_available_inbounds()
         return jsonify({
             'success': True,
@@ -1853,6 +1880,8 @@ def query_code():
     if order['status'] == 'completed' and order['user_uuid']:
         data = build_result_from_order(order, inbounds=get_available_inbounds())
         conn.close()
+        if not data:
+            return jsonify({'success': False, 'msg': '该 LDC 订单已退款，订阅已失效'})
         return jsonify({'success': True, 'msg': '查询成功', 'data': data})
 
     if order['status'] == 'failed':
@@ -2057,10 +2086,17 @@ def ldc_order_status(out_trade_no):
         return jsonify({'success': False, 'status': 'missing', 'msg': '订单不存在'}), 404
 
     if order['status'] == 'completed' and order['user_uuid']:
+        data = build_result_from_order(order, inbounds=get_available_inbounds())
+        if not data:
+            return jsonify({
+                'success': False,
+                'status': 'refunded',
+                'msg': '该 LDC 订单已退款，订阅已失效'
+            })
         return jsonify({
             'success': True,
             'status': 'completed',
-            'data': build_result_from_order(order, inbounds=get_available_inbounds())
+            'data': data
         })
 
     if order['status'] == 'expired':
@@ -2107,10 +2143,26 @@ def subscription(user_uuid):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE uuid = ?", (user_uuid,))
     user = cursor.fetchone()
-    conn.close()
 
     if not user:
+        conn.close()
         return "用户不存在", 404
+
+    if is_datetime_expired(user['expire_at']):
+        conn.close()
+        return "订阅已过期", 403
+
+    cursor.execute('''
+        SELECT refund_status
+        FROM ldc_orders
+        WHERE user_uuid = ?
+          AND refund_status = 'success'
+        LIMIT 1
+    ''', (user_uuid,))
+    refunded_order = cursor.fetchone()
+    conn.close()
+    if refunded_order:
+        return "订阅已失效", 403
 
     inbound_id = user['inbound_id'] or 14
     xui_instance_id = row_get(user, 'xui_instance_id', 1)
