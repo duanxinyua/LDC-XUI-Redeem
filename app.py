@@ -2910,8 +2910,17 @@ def list_users():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT * FROM users
-        ORDER BY created_at DESC
+        SELECT
+            u.*,
+            (
+                SELECT o.out_trade_no
+                FROM ldc_orders o
+                WHERE o.user_uuid = u.uuid
+                ORDER BY o.id DESC
+                LIMIT 1
+            ) AS ldc_order_no
+        FROM users u
+        ORDER BY u.created_at DESC
     ''')
     users = cursor.fetchall()
     conn.close()

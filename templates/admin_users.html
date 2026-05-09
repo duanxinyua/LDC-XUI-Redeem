@@ -173,7 +173,7 @@
                             <th>流量</th>
                             <th>到期</th>
                             <th>状态</th>
-                            <th>兑换码</th>
+                            <th>兑换码 / LDC订单号</th>
                             <th>订阅</th>
                         </tr>
                     </thead>
@@ -192,7 +192,7 @@
                                 <span class="badge badge-expired">过期</span>
                                 {% endif %}
                             </td>
-                            <td><code>{{ user.redeem_code }}</code></td>
+                            <td><code>{{ user.redeem_code or user.ldc_order_no or '-' }}</code></td>
                             <td>
                                 <button class="copy-btn" onclick="copySub('{{ user.uuid }}')">复制</button>
                             </td>
