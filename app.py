@@ -1368,50 +1368,6 @@ def distribute_ldc_credit(user_id, username, amount, out_trade_no=None, remark=N
     return call_ldc_authorized_api('/lpay/distribute', method='POST', json_payload=payload)
 
 
-def query_ldc_user_balance_stats():
-    """调用 LDC 用户余额统计接口。"""
-    return call_ldc_public_api('/api/v1/dashboard/stats/user-balance')
-
-
-def build_ldc_balance_stat_items(result):
-    """将 LDC 用户余额统计结果转为后台展示字段。"""
-    data = {}
-    if isinstance(result, dict):
-        raw_data = result.get('data')
-        if isinstance(raw_data, dict):
-            data = raw_data
-
-    fields = [
-        ('total_count', '统计用户总数', '当前纳入余额统计的用户数量', ''),
-        ('total_amount', '可用余额总和', '所有用户可用余额之和', '积分'),
-        ('avg_amount', '平均余额', '所有统计用户的平均可用余额', '积分'),
-        ('median_amount', '余额中位数', '一半用户余额低于该值，一半高于该值', '积分'),
-        ('min_amount', '最小余额', '统计样本中的最低可用余额', '积分'),
-        ('max_amount', '最大余额', '统计样本中的最高可用余额', '积分'),
-        ('std_dev', '余额标准差', '余额离散程度，数值越大差异越明显', '积分'),
-    ]
-
-    return [
-        {
-            'key': key,
-            'label': label,
-            'description': description,
-            'value': data.get(key, '-'),
-            'unit': unit,
-        }
-        for key, label, description, unit in fields
-    ]
-
-
-def parse_ldc_balance_stats_success(result):
-    """判断 LDC 用户余额统计接口是否返回了可展示数据。"""
-    if not isinstance(result, dict):
-        return False
-    if result.get('success') is True:
-        return True
-    return isinstance(result.get('data'), dict)
-
-
 def finalize_ldc_order(out_trade_no, trade_no=None, notify_payload=None, inbounds=None):
     """将已支付的 LDC 订单落地为订阅账号"""
     conn = get_db()
@@ -2708,13 +2664,13 @@ def sync_ldc_orders():
 @app.route('/admin/ldc-tools')
 @admin_required
 def ldc_tools_page():
-    """LDC 余额统计与商户分发工具。"""
+    """LDC 商户分发工具。"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT *
         FROM ldc_api_actions
-        WHERE action IN ('user_balance_stats', 'distribute')
+        WHERE action = 'distribute'
         ORDER BY datetime(created_at) DESC, id DESC
         LIMIT 30
     ''')
@@ -2885,26 +2841,6 @@ def admin_distribute_ldc_credit():
     )
 
     return jsonify({'success': success, 'msg': message, 'data': result})
-
-
-@app.route('/admin/ldc/user-balance-stats', methods=['POST'])
-@admin_required
-@csrf_required
-def admin_ldc_user_balance_stats():
-    """后台调用 LDC 用户余额统计接口。"""
-    result = query_ldc_user_balance_stats()
-    success = parse_ldc_balance_stats_success(result)
-    message = extract_ldc_api_message(result, '查询成功' if success else '查询失败')
-    items = build_ldc_balance_stat_items(result) if success else []
-    record_ldc_api_action(
-        'user_balance_stats',
-        request_payload={'path': '/api/v1/dashboard/stats/user-balance'},
-        response_payload=result,
-        success=success,
-        message=message
-    )
-
-    return jsonify({'success': success, 'msg': message, 'items': items})
 
 
 @app.route('/admin/generate', methods=['POST'])

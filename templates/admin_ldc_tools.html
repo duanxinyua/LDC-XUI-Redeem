@@ -36,7 +36,7 @@
         }
         .header-links a:hover { color: #4facfe; }
         .container {
-            max-width: 1180px;
+            max-width: 980px;
             margin: 0 auto;
             padding: 32px 24px 48px;
         }
@@ -62,56 +62,11 @@
             color: #1a1a1a;
         }
         .section-body { padding: 24px; }
-        .tool-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(360px, 0.75fr);
-            gap: 24px;
-            align-items: start;
-        }
         .intro {
             color: #64748b;
             font-size: 13px;
             line-height: 1.6;
             margin-bottom: 18px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-        }
-        .stat-card {
-            border-radius: 14px;
-            padding: 18px 20px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            min-height: 128px;
-        }
-        .stat-card h3 {
-            color: #64748b;
-            font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        .stat-card .number {
-            color: #0f172a;
-            font-size: 28px;
-            font-weight: 700;
-            overflow-wrap: anywhere;
-        }
-        .stat-card .desc {
-            margin-top: 8px;
-            color: #64748b;
-            font-size: 12px;
-            line-height: 1.45;
-        }
-        .empty-stats {
-            grid-column: 1 / -1;
-            padding: 48px 20px;
-            text-align: center;
-            color: #94a3b8;
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 14px;
         }
         .form-grid {
             display: grid;
@@ -259,8 +214,6 @@
             100% { opacity: 0; }
         }
         @media (max-width: 920px) {
-            .tool-layout,
-            .stats-grid,
             .form-grid {
                 grid-template-columns: 1fr;
             }
@@ -297,57 +250,42 @@
     </div>
 
     <div class="container">
-        <div class="tool-layout">
-            <div class="section">
-                <div class="section-header">
-                    <h2>用户余额统计</h2>
-                    <button type="button" class="btn btn-primary" id="balanceStatsBtn">查询余额统计</button>
-                </div>
-                <div class="section-body">
-                    <p class="intro">查询 LDC 官方用户余额统计接口，结果会按字段含义展示，不再显示原始 JSON。</p>
-                    <div class="stats-grid" id="balanceStatsGrid">
-                        <div class="empty-stats">点击“查询余额统计”后显示统计结果。</div>
-                    </div>
-                </div>
+        <div class="section">
+            <div class="section-header">
+                <h2>商户分发</h2>
+                <span class="badge badge-neutral">真实扣减余额</span>
             </div>
-
-            <div class="section">
-                <div class="section-header">
-                    <h2>商户分发</h2>
-                    <span class="badge badge-neutral">真实扣减余额</span>
-                </div>
-                <div class="section-body">
-                    <p class="intro">向指定 LINUX DO 用户分发积分。请确认用户 ID 和用户名匹配，提交前系统会再次确认。</p>
-                    <form id="distributeForm">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>用户 ID</label>
-                                <input type="number" id="distributeUserId" min="1" step="1" placeholder="例如 1234" required>
-                            </div>
-                            <div class="form-group">
-                                <label>用户名</label>
-                                <input type="text" id="distributeUsername" placeholder="LINUX DO 用户名" required>
-                            </div>
-                            <div class="form-group">
-                                <label>分发积分</label>
-                                <input type="number" id="distributeAmount" min="0.01" step="0.01" placeholder="例如 10" required>
-                            </div>
-                            <div class="form-group">
-                                <label>商户订单号</label>
-                                <input type="text" id="distributeOrderNo" placeholder="可留空，建议填唯一编号">
-                            </div>
-                            <div class="form-group full-width">
-                                <label>备注</label>
-                                <input type="text" id="distributeRemark" placeholder="可选，写入分发备注">
-                            </div>
+            <div class="section-body">
+                <p class="intro">向指定 LINUX DO 用户分发积分。请确认用户 ID 和用户名匹配，提交前系统会再次确认。</p>
+                <form id="distributeForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>用户 ID</label>
+                            <input type="number" id="distributeUserId" min="1" step="1" placeholder="例如 1234" required>
                         </div>
-                        <div class="help">分发成功后会写入接口调用日志；如果商户订单号为空，官方接口可能自行生成或拒绝，建议填写唯一编号。</div>
-                        <div class="actions">
-                            <button type="submit" class="btn btn-danger">确认分发积分</button>
-                            <a href="/admin/ldc-orders" class="btn btn-secondary">返回 LDC 记录</a>
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" id="distributeUsername" placeholder="LINUX DO 用户名" required>
                         </div>
-                    </form>
-                </div>
+                        <div class="form-group">
+                            <label>分发积分</label>
+                            <input type="number" id="distributeAmount" min="0.01" step="0.01" placeholder="例如 10" required>
+                        </div>
+                        <div class="form-group">
+                            <label>商户订单号</label>
+                            <input type="text" id="distributeOrderNo" placeholder="可留空，建议填唯一编号">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>备注</label>
+                            <input type="text" id="distributeRemark" placeholder="可选，写入分发备注">
+                        </div>
+                    </div>
+                    <div class="help">分发成功后会写入接口调用日志；如果商户订单号为空，官方接口可能自行生成或拒绝，建议填写唯一编号。</div>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-danger">确认分发积分</button>
+                        <a href="/admin/ldc-orders" class="btn btn-secondary">返回 LDC 记录</a>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -404,7 +342,6 @@
     <script>
         const csrfToken = {{ csrf_token | tojson }};
         const toast = document.getElementById('toast');
-        const balanceStatsGrid = document.getElementById('balanceStatsGrid');
 
         function showToast(message) {
             toast.textContent = message;
@@ -419,56 +356,6 @@
             });
             return response.json();
         }
-
-        function renderStats(items) {
-            if (!items || !items.length) {
-                balanceStatsGrid.replaceChildren(Object.assign(document.createElement('div'), {
-                    className: 'empty-stats',
-                    textContent: '没有可展示的统计结果。'
-                }));
-                return;
-            }
-
-            const nodes = items.map(item => {
-                const card = document.createElement('div');
-                card.className = 'stat-card';
-
-                const title = document.createElement('h3');
-                title.textContent = item.label || item.key || '-';
-
-                const number = document.createElement('div');
-                number.className = 'number';
-                number.textContent = `${item.value ?? '-'}${item.unit ? ' ' + item.unit : ''}`;
-
-                const desc = document.createElement('div');
-                desc.className = 'desc';
-                desc.textContent = item.description || '';
-
-                card.append(title, number, desc);
-                return card;
-            });
-            balanceStatsGrid.replaceChildren(...nodes);
-        }
-
-        document.getElementById('balanceStatsBtn').addEventListener('click', async function () {
-            const btn = this;
-            btn.disabled = true;
-            btn.textContent = '查询中...';
-            try {
-                const formData = new FormData();
-                formData.append('_csrf_token', csrfToken);
-                const data = await postForm('/admin/ldc/user-balance-stats', formData);
-                showToast(data.msg || '查询完成');
-                if (data.success) {
-                    renderStats(data.items || []);
-                }
-            } catch (error) {
-                showToast('查询失败，请稍后重试');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '查询余额统计';
-            }
-        });
 
         document.getElementById('distributeForm').addEventListener('submit', async function (event) {
             event.preventDefault();
