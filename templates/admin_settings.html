@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+        .settings-layout {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+        .settings-menu {
+            position: sticky;
+            top: 84px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            padding: 14px;
+        }
+        .settings-menu-title {
+            padding: 8px 10px 12px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+        }
+        .settings-menu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 10px;
+            border-radius: 12px;
+            color: #334155;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .settings-menu a:hover,
+        .settings-menu a.active {
+            background: #eef6ff;
+            color: #0284c7;
+        }
+        .settings-menu .menu-index {
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9px;
+            background: #f1f5f9;
+            color: #0f172a;
+            font-size: 13px;
+            flex: 0 0 auto;
+        }
+        .settings-content {
+            min-width: 0;
+        }
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+            margin-bottom: 24px;
+            scroll-margin-top: 86px;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .section-body { padding: 24px; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .summary-card {
+            border-radius: 14px;
+            padding: 18px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            min-width: 0;
+        }
+        .summary-card h3 {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .summary-card .number {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+            overflow-wrap: anywhere;
+        }
+        .summary-card.ratio .number { color: #4facfe; }
+        .summary-card.used .number { color: #16a34a; }
+
+        .settings-form {
+            display: grid;
+            gap: 18px;
+        }
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .settings-toggle input {
+            width: 18px;
+            height: 18px;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .full-width { grid-column: 1 / -1; }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        .setting-help {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+        .setting-summary,
+        .setting-warning {
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .setting-summary {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+        }
+        .setting-warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+        .inbound-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .inbound-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+        .inbound-item input {
+            margin-top: 3px;
+            width: 16px;
+            height: 16px;
+        }
+        .inbound-main {
+            display: grid;
+            gap: 4px;
+            min-width: 0;
+        }
+        .inbound-name {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+        .inbound-meta {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+        .xui-instance-list {
+            display: grid;
+            gap: 16px;
+        }
+        .xui-instance-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px;
+            background: #f8fafc;
+        }
+        .xui-instance-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .xui-instance-title {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .xui-new-card {
+            background: #fff;
+            border-style: dashed;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-success { background: #dcfce7; color: #16a34a; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-neutral { background: #e2e8f0; color: #475569; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 2s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @media (max-width: 900px) {
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .settings-layout {
+                grid-template-columns: 1fr;
+            }
+            .settings-menu {
+                position: sticky;
+                top: 74px;
+                z-index: 50;
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding: 10px;
+            }
+            .settings-menu-title {
+                display: none;
+            }
+            .settings-menu a {
+                white-space: nowrap;
+                flex: 0 0 auto;
+            }
+        }
+        @media (max-width: 720px) {
+            .header {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 16px;
+            }
+            .header-links a { margin-left: 0; }
+            .container { padding: 20px 12px 36px; }
+            .settings-menu {
+                top: 112px;
+                border-radius: 14px;
+            }
+            .summary-grid,
+            .settings-grid,
+            .inbound-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">设置中心</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="settings-layout">
+            <nav class="settings-menu" aria-label="设置菜单">
+                <div class="settings-menu-title">设置菜单</div>
+                <a href="#account" class="settings-menu-link active" data-target="account">
+                    <span class="menu-index">1</span>
+                    <span>管理员账号</span>
+                </a>
+                <a href="#xui" class="settings-menu-link" data-target="xui">
+                    <span class="menu-index">2</span>
+                    <span>3x-ui 连接</span>
+                </a>
+                <a href="#ldc" class="settings-menu-link" data-target="ldc">
+                    <span class="menu-index">3</span>
+                    <span>LDC 兑换</span>
+                </a>
+                <a href="#turnstile" class="settings-menu-link" data-target="turnstile">
+                    <span class="menu-index">4</span>
+                    <span>Turnstile</span>
+                </a>
+            </nav>
+
+            <main class="settings-content">
+                <div class="section" id="account">
+                    <div class="section-header">
+                        <h2>管理员账号</h2>
+                        <span class="badge badge-neutral">当前账号：{{ admin_username }}</span>
+                    </div>
+                    <div class="section-body">
+                        <form class="settings-form" id="accountSettingsForm">
+                            <div class="settings-grid">
+                                <div class="form-group">
+                                    <label>当前用户名</label>
+                                    <input type="text" value="{{ admin_username }}" readonly>
+                                    <div class="setting-help">这里显示你当前登录使用的账号。</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>新用户名</label>
+                                    <input type="text" id="adminNewUsername" value="{{ admin_username }}" maxlength="64">
+                                    <div class="setting-help">如需修改，请直接输入新的用户名；不改就保持当前值。</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>当前密码</label>
+                                    <input type="password" id="adminCurrentPassword" placeholder="请输入当前密码" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>新密码</label>
+                                    <input type="password" id="adminNewPassword" placeholder="留空则不修改密码" minlength="6">
+                                    <div class="setting-help">新密码至少 6 个字符。</div>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>确认新密码</label>
+                                    <input type="password" id="adminConfirmPassword" placeholder="再次输入新密码" minlength="6">
+                                </div>
+                            </div>
+                            <div class="setting-summary">
+                                修改用户名后会立即更新当前登录状态；修改密码后，下次登录需要使用新密码。
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存账号信息</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="section" id="xui">
+            <div class="section-header">
+                <h2>3x-ui 面板设置</h2>
+                <span class="badge {% if xui_configured %}badge-success{% else %}badge-warning{% endif %}">
+                    {% if xui_configured %}默认面板已配置{% else %}默认面板未完整配置{% endif %}
+                </span>
+            </div>
+            <div class="section-body">
+                <form class="settings-form" id="xuiSettingsForm">
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>默认兑换流量 (GB)</label>
+                            <input type="number" id="xuiTrafficLimit" min="1" step="1" value="{{ xui_traffic_limit }}">
+                            <div class="setting-help">生成兑换码和 LDC 页面默认流量会使用这个值。</div>
+                        </div>
+                        <div class="form-group">
+                            <label>默认有效期 (天)</label>
+                            <input type="number" id="xuiExpireDays" min="1" step="1" value="{{ xui_expire_days }}">
+                            <div class="setting-help">兑换码和 LDC 兑换生成的 3x-ui 用户默认有效期。</div>
+                        </div>
+                    </div>
+                    <div class="setting-summary">
+                        默认流量：{{ xui_traffic_limit }} GB；默认有效期：{{ xui_expire_days }} 天。第一个启用的面板会作为旧数据和兜底节点的默认面板。
+                    </div>
+
+                    <div class="xui-instance-list">
+                        {% for instance in xui_instances %}
+                        <div class="xui-instance-card" data-xui-instance="{{ instance.id }}">
+                            <div class="xui-instance-head">
+                                <div class="xui-instance-title">{{ instance.name }} · 面板 #{{ instance.id }}</div>
+                                <label class="settings-toggle">
+                                    <input type="checkbox" data-xui-field="enabled" {% if instance.enabled %}checked{% endif %}>
+                                    <span>启用</span>
+                                </label>
+                            </div>
+                            <div class="settings-grid">
+                                <div class="form-group">
+                                    <label>面板名称</label>
+                                    <input type="text" data-xui-field="name" value="{{ instance.name }}" maxlength="64">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 地址</label>
+                                    <input type="url" data-xui-field="host" value="{{ instance.host }}" placeholder="http://127.0.0.1:2053">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 用户名</label>
+                                    <input type="text" data-xui-field="username" value="{{ instance.username }}" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 密码</label>
+                                    <input type="password" data-xui-field="password" placeholder="{% if instance.password_set %}已设置，留空则不修改{% else %}请输入 3x-ui 密码{% endif %}" autocomplete="new-password">
+                                    <div class="setting-help">不会回显当前密码；留空则保留原密码。</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="xui-instance-card xui-new-card" id="newXuiInstance">
+                            <div class="xui-instance-head">
+                                <div class="xui-instance-title">新增 3x-ui 面板</div>
+                                <span class="badge badge-neutral">可选</span>
+                            </div>
+                            <div class="settings-grid">
+                                <div class="form-group">
+                                    <label>面板名称</label>
+                                    <input type="text" id="newXuiName" placeholder="例如：香港面板" maxlength="64">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 地址</label>
+                                    <input type="url" id="newXuiHost" placeholder="http://127.0.0.1:2053">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 用户名</label>
+                                    <input type="text" id="newXuiUsername" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label>3x-ui 密码</label>
+                                    <input type="password" id="newXuiPassword" autocomplete="new-password">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-summary">
+                        节点白名单为空时，前台默认显示所有启用面板中的可用 vmess/ws 节点；勾选后，只上架选中的节点。不同面板的相同入站 ID 会按面板区分，不会串节点。
+                    </div>
+                    <div class="inbound-list">
+                        {% for node_key, info in xui_inbounds.items() %}
+                        <label class="inbound-item">
+                            <input type="checkbox" name="xui_enabled_nodes" value="{{ node_key }}" {% if xui_whitelist_enabled and node_key in xui_enabled_node_keys %}checked{% endif %}>
+                            <span class="inbound-main">
+                                <span class="inbound-name">{{ info.xui_instance_name }} · {{ info.name }}</span>
+                                <span class="inbound-meta">面板 #{{ info.xui_instance_id }} / ID: {{ info.id }} / 端口: {{ info.port }} / {% if info.enable %}3x-ui 已启用{% else %}3x-ui 已禁用{% endif %}</span>
+                                <span class="inbound-meta">路径: {{ info.ws_path or '-' }}{% if info.host %} / Host: {{ info.host }}{% endif %}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存 3x-ui 设置</button>
+                </form>
+            </div>
+                </div>
+
+                <div class="section" id="ldc">
+            <div class="section-header">
+                <h2>LDC 积分兑换设置</h2>
+                <span class="badge {% if ldc_effective_enabled %}badge-success{% else %}badge-warning{% endif %}">
+                    {% if ldc_effective_enabled %}已开启{% elif ldc_enabled %}参数未完整{% else %}未开启{% endif %}
+                </span>
+            </div>
+            <div class="section-body">
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>总流量上限</h3>
+                        <div class="number">{{ ldc_total_limit_text }}</div>
+                    </div>
+                    <div class="summary-card used">
+                        <h3>已占用（含待支付）</h3>
+                        <div class="number">{{ ldc_used_gb }} GB</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>剩余</h3>
+                        <div class="number">{{ ldc_remaining_text }}</div>
+                    </div>
+                    <div class="summary-card ratio">
+                        <h3>兑换比例</h3>
+                        <div class="number">1GB = {{ ldc_exchange_ratio }}</div>
+                    </div>
+                </div>
+
+                {% if ldc_enabled and not ldc_effective_enabled %}
+                <div class="setting-warning" style="margin-bottom:18px;">
+                    后台开关已打开，但服务器还没有完整读取到 LDC_PID / LDC_KEY，前台不会真正启用 LDC 兑换。
+                </div>
+                {% endif %}
+
+                <form class="settings-form" id="ldcSettingsForm">
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="ldcEnabled" {% if ldc_enabled %}checked{% endif %}>
+                        <span>开启 LDC 积分兑换</span>
+                    </label>
+
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>总流量限制 (GB，0 为不限制)</label>
+                            <input type="number" id="ldcTotalLimit" min="0" step="1" value="{{ ldc_total_limit_gb }}">
+                            <div class="setting-help">例如每月 1T 可以填 1024；填 0 表示不限制。</div>
+                        </div>
+                        <div class="form-group">
+                            <label>兑换比例 (1GB 需要多少积分)</label>
+                            <input type="number" id="ldcExchangeRatio" min="0.01" step="0.01" value="{{ ldc_exchange_ratio }}">
+                            <div class="setting-help">例如填 1 表示 1GB = 1 积分，填 1.5 表示 1GB = 1.5 积分。</div>
+                        </div>
+                    </div>
+
+                    <div class="setting-summary">
+                        当前总上限：{{ ldc_total_limit_text }}；已占用（含待支付）：{{ ldc_used_gb }} GB；已完成/已支付：{{ ldc_confirmed_used_gb }} GB；剩余：{{ ldc_remaining_text }}；当前比例：1GB = {{ ldc_exchange_ratio }} 积分。
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存 LDC 设置</button>
+                </form>
+            </div>
+                </div>
+
+                <div class="section" id="turnstile">
+            <div class="section-header">
+                <h2>Cloudflare Turnstile</h2>
+                <span class="badge {% if turnstile_effective_enabled %}badge-success{% else %}badge-warning{% endif %}">
+                    {% if turnstile_effective_enabled %}已开启{% elif turnstile_enabled %}参数未完整{% else %}未开启{% endif %}
+                </span>
+            </div>
+            <div class="section-body">
+                <div class="setting-summary" style="margin-bottom:18px;">
+                    Turnstile 会保护兑换、支付、查询和后台登录。开启后，前台操作会要求用户完成人机验证。
+                </div>
+
+                {% if turnstile_enabled and not turnstile_effective_enabled %}
+                <div class="setting-warning" style="margin-bottom:18px;">
+                    你已开启 Turnstile，但 Site Key 或 Secret Key 不完整，前台不会真正启用验证。
+                </div>
+                {% endif %}
+
+                <form class="settings-form" id="turnstileSettingsForm">
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="turnstileEnabled" {% if turnstile_enabled %}checked{% endif %}>
+                        <span>开启 Cloudflare Turnstile</span>
+                    </label>
+
+                    <div class="settings-grid">
+                        <div class="form-group full-width">
+                            <label>Site Key</label>
+                            <input type="text" id="turnstileSiteKey" value="{{ turnstile_site_key }}" placeholder="请输入 Turnstile Site Key" autocomplete="off">
+                            <div class="setting-help">前台会公开使用这个 Site Key 渲染验证码。</div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Secret Key</label>
+                            <input type="password" id="turnstileSecretKey" placeholder="{% if turnstile_secret_key_set %}已设置，留空则不修改{% else %}请输入 Turnstile Secret Key{% endif %}" autocomplete="new-password">
+                            <div class="setting-help">Secret Key 只保存在后台，不会回显到页面。</div>
+                        </div>
+                    </div>
+
+                    <div class="setting-summary">
+                        当前状态：{% if turnstile_effective_enabled %}已启用{% elif turnstile_enabled %}参数未完整{% else %}未启用{% endif %}；Site Key：{{ turnstile_site_key or '未填写' }}；Secret Key：{% if turnstile_secret_key_set %}已设置{% else %}未设置{% endif %}。
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存 Turnstile 设置</button>
+                </form>
+            </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已保存</div>
+
+    <script>
+        const csrfToken = {{ csrf_token | tojson }};
+        const settingsMenuLinks = document.querySelectorAll('.settings-menu-link');
+        const settingsSections = document.querySelectorAll('.settings-content .section');
+
+        function setActiveMenu(targetId) {
+            settingsMenuLinks.forEach(link => {
+                link.classList.toggle('active', link.dataset.target === targetId);
+            });
+        }
+
+        settingsMenuLinks.forEach(link => {
+            link.addEventListener('click', () => setActiveMenu(link.dataset.target));
+        });
+
+        const sectionObserver = new IntersectionObserver((entries) => {
+            const visibleEntry = entries
+                .filter(entry => entry.isIntersecting)
+                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+            if (visibleEntry) {
+                setActiveMenu(visibleEntry.target.id);
+            }
+        }, {
+            rootMargin: '-18% 0px -65% 0px',
+            threshold: [0.1, 0.3, 0.6]
+        });
+
+        settingsSections.forEach(section => sectionObserver.observe(section));
+
+        if (window.location.hash) {
+            setActiveMenu(window.location.hash.replace('#', ''));
+        }
+
+        async function submitForm(url, formData) {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            return response.json();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function reloadSoon() {
+            setTimeout(() => window.location.reload(), 500);
+        }
+
+        document.getElementById('accountSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('admin_new_username', document.getElementById('adminNewUsername').value);
+            formData.append('admin_current_password', document.getElementById('adminCurrentPassword').value);
+            formData.append('admin_new_password', document.getElementById('adminNewPassword').value);
+            formData.append('admin_confirm_password', document.getElementById('adminConfirmPassword').value);
+
+            try {
+                const data = await submitForm('/admin/account-settings', formData);
+                if (data.success) {
+                    showToast(data.msg || '账号信息已更新');
+                    reloadSoon();
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        document.getElementById('xuiSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('xui_traffic_limit', document.getElementById('xuiTrafficLimit').value);
+            formData.append('xui_expire_days', document.getElementById('xuiExpireDays').value);
+
+            document.querySelectorAll('[data-xui-instance]').forEach(card => {
+                const instanceId = card.dataset.xuiInstance;
+                card.querySelectorAll('[data-xui-field]').forEach(input => {
+                    const key = `xui_instance_${instanceId}_${input.dataset.xuiField}`;
+                    if (input.type === 'checkbox') {
+                        formData.append(key, input.checked ? '1' : '0');
+                    } else {
+                        formData.append(key, input.value);
+                    }
+                });
+            });
+
+            formData.append('new_xui_name', document.getElementById('newXuiName').value);
+            formData.append('new_xui_host', document.getElementById('newXuiHost').value);
+            formData.append('new_xui_username', document.getElementById('newXuiUsername').value);
+            formData.append('new_xui_password', document.getElementById('newXuiPassword').value);
+
+            document.querySelectorAll('input[name="xui_enabled_nodes"]:checked').forEach(input => {
+                formData.append('xui_enabled_nodes', input.value);
+            });
+
+            try {
+                const data = await submitForm('/admin/xui-settings', formData);
+                if (data.success) {
+                    showToast(data.msg || '3x-ui 配置已保存');
+                    reloadSoon();
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        document.getElementById('ldcSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('ldc_enabled', document.getElementById('ldcEnabled').checked ? '1' : '0');
+            formData.append('ldc_total_limit_gb', document.getElementById('ldcTotalLimit').value);
+            formData.append('ldc_exchange_ratio', document.getElementById('ldcExchangeRatio').value);
+
+            try {
+                const data = await submitForm('/admin/ldc-settings', formData);
+                if (data.success) {
+                    showToast(data.msg || 'LDC 配置已保存');
+                    reloadSoon();
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        document.getElementById('turnstileSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('turnstile_enabled', document.getElementById('turnstileEnabled').checked ? '1' : '0');
+            formData.append('turnstile_site_key', document.getElementById('turnstileSiteKey').value);
+            formData.append('turnstile_secret_key', document.getElementById('turnstileSecretKey').value);
+
+            try {
+                const data = await submitForm('/admin/turnstile-settings', formData);
+                if (data.success) {
+                    showToast(data.msg || 'Turnstile 配置已保存');
+                    reloadSoon();
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+    </script>
+</body>
+</html>

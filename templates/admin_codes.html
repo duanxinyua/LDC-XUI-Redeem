@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兑换码列表</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 500;
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            font-size: 14px;
+            border-top: 1px solid #f5f5f5;
+            color: #333;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-unused { background: #e0f2fe; color: #0284c7; }
+        .badge-used { background: #dcfce7; color: #16a34a; }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            background: #f5f5f5;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">⚡ 兑换码列表</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <div class="section-header">
+                <h2>全部兑换码</h2>
+                <a href="/admin" class="btn">生成新码</a>
+            </div>
+            <div class="table-wrapper">
+                {% if codes %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>兑换码</th>
+                            <th>流量</th>
+                            <th>天数</th>
+                            <th>状态</th>
+                            <th>使用者</th>
+                            <th>节点</th>
+                            <th>兑换时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for code in codes %}
+                        <tr>
+                            <td><code>{{ code.code }}</code></td>
+                            <td>{{ code.traffic_limit }}G</td>
+                            <td>{{ code.expire_days }}天</td>
+                            <td>
+                                {% if code.used %}
+                                <span class="badge badge-used">已使用</span>
+                                {% else %}
+                                <span class="badge badge-unused">未使用</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ code.used_by or '-' }}</td>
+                            <td>
+                                {% if code.used and code.inbound_id %}
+                                {{ format_inbound_name(inbounds, code.inbound_id, code.xui_instance_id) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ code.used_at[:16] if code.used_at else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">暂无兑换码</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

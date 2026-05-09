@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LDC 工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header-links a:hover { color: #4facfe; }
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .section-body { padding: 24px; }
+        .tool-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(360px, 0.75fr);
+            gap: 24px;
+            align-items: start;
+        }
+        .intro {
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .stat-card {
+            border-radius: 14px;
+            padding: 18px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            min-height: 128px;
+        }
+        .stat-card h3 {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .stat-card .number {
+            color: #0f172a;
+            font-size: 28px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+        .stat-card .desc {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+        .empty-stats {
+            grid-column: 1 / -1;
+            padding: 48px 20px;
+            text-align: center;
+            color: #94a3b8;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 14px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        .help {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        .btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-completed { background: #dcfce7; color: #16a34a; }
+        .badge-failed { background: #fee2e2; color: #dc2626; }
+        .badge-neutral { background: #e2e8f0; color: #475569; }
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #f0f0f0;
+            border-radius: 14px;
+        }
+        table {
+            width: 100%;
+            min-width: 860px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #fafafa;
+            color: #888;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            border-top: 1px solid #f5f5f5;
+            color: #333;
+            font-size: 14px;
+        }
+        .muted {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+        .empty {
+            text-align: center;
+            padding: 52px 20px;
+            color: #999;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+            max-width: min(720px, calc(100vw - 32px));
+            line-height: 1.5;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 4s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        @media (max-width: 920px) {
+            .tool-layout,
+            .stats-grid,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width { grid-column: auto; }
+        }
+        @media (max-width: 640px) {
+            .header {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 16px;
+            }
+            .header-links a { margin-left: 0; }
+            .container { padding: 20px 12px 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">LDC 工具</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tool-layout">
+            <div class="section">
+                <div class="section-header">
+                    <h2>用户余额统计</h2>
+                    <button type="button" class="btn btn-primary" id="balanceStatsBtn">查询余额统计</button>
+                </div>
+                <div class="section-body">
+                    <p class="intro">查询 LDC 官方用户余额统计接口，结果会按字段含义展示，不再显示原始 JSON。</p>
+                    <div class="stats-grid" id="balanceStatsGrid">
+                        <div class="empty-stats">点击“查询余额统计”后显示统计结果。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2>商户分发</h2>
+                    <span class="badge badge-neutral">真实扣减余额</span>
+                </div>
+                <div class="section-body">
+                    <p class="intro">向指定 LINUX DO 用户分发积分。请确认用户 ID 和用户名匹配，提交前系统会再次确认。</p>
+                    <form id="distributeForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>用户 ID</label>
+                                <input type="number" id="distributeUserId" min="1" step="1" placeholder="例如 1234" required>
+                            </div>
+                            <div class="form-group">
+                                <label>用户名</label>
+                                <input type="text" id="distributeUsername" placeholder="LINUX DO 用户名" required>
+                            </div>
+                            <div class="form-group">
+                                <label>分发积分</label>
+                                <input type="number" id="distributeAmount" min="0.01" step="0.01" placeholder="例如 10" required>
+                            </div>
+                            <div class="form-group">
+                                <label>商户订单号</label>
+                                <input type="text" id="distributeOrderNo" placeholder="可留空，建议填唯一编号">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>备注</label>
+                                <input type="text" id="distributeRemark" placeholder="可选，写入分发备注">
+                            </div>
+                        </div>
+                        <div class="help">分发成功后会写入接口调用日志；如果商户订单号为空，官方接口可能自行生成或拒绝，建议填写唯一编号。</div>
+                        <div class="actions">
+                            <button type="submit" class="btn btn-danger">确认分发积分</button>
+                            <a href="/admin/ldc-orders" class="btn btn-secondary">返回 LDC 记录</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>工具调用日志</h2>
+                <span class="badge badge-neutral">最近 30 条</span>
+            </div>
+            <div class="section-body">
+                <div class="table-wrapper">
+                    {% if api_actions %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>接口</th>
+                                <th>订单</th>
+                                <th>结果</th>
+                                <th>返回信息</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in api_actions %}
+                            <tr>
+                                <td>{{ format_dt(action.created_at) }}</td>
+                                <td>{{ action.action }}</td>
+                                <td>
+                                    <div>{{ action.out_trade_no or '-' }}</div>
+                                    {% if action.trade_no %}
+                                    <div class="muted">{{ action.trade_no }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if action.success %}
+                                    <span class="badge badge-completed">成功</span>
+                                    {% else %}
+                                    <span class="badge badge-failed">失败</span>
+                                    {% endif %}
+                                </td>
+                                <td><div class="muted">{{ action.message or '-' }}</div></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty">暂无工具调用日志</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">操作完成</div>
+    <script>
+        const csrfToken = {{ csrf_token | tojson }};
+        const toast = document.getElementById('toast');
+        const balanceStatsGrid = document.getElementById('balanceStatsGrid');
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        async function postForm(url, formData) {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            return response.json();
+        }
+
+        function renderStats(items) {
+            if (!items || !items.length) {
+                balanceStatsGrid.replaceChildren(Object.assign(document.createElement('div'), {
+                    className: 'empty-stats',
+                    textContent: '没有可展示的统计结果。'
+                }));
+                return;
+            }
+
+            const nodes = items.map(item => {
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+
+                const title = document.createElement('h3');
+                title.textContent = item.label || item.key || '-';
+
+                const number = document.createElement('div');
+                number.className = 'number';
+                number.textContent = `${item.value ?? '-'}${item.unit ? ' ' + item.unit : ''}`;
+
+                const desc = document.createElement('div');
+                desc.className = 'desc';
+                desc.textContent = item.description || '';
+
+                card.append(title, number, desc);
+                return card;
+            });
+            balanceStatsGrid.replaceChildren(...nodes);
+        }
+
+        document.getElementById('balanceStatsBtn').addEventListener('click', async function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = '查询中...';
+            try {
+                const formData = new FormData();
+                formData.append('_csrf_token', csrfToken);
+                const data = await postForm('/admin/ldc/user-balance-stats', formData);
+                showToast(data.msg || '查询完成');
+                if (data.success) {
+                    renderStats(data.items || []);
+                }
+            } catch (error) {
+                showToast('查询失败，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '查询余额统计';
+            }
+        });
+
+        document.getElementById('distributeForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const amount = document.getElementById('distributeAmount').value;
+            const username = document.getElementById('distributeUsername').value;
+            if (!confirm(`确认向 ${username} 分发 ${amount} 积分？该操作可能真实扣减商户余额。`)) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('user_id', document.getElementById('distributeUserId').value);
+            formData.append('username', username);
+            formData.append('amount', amount);
+            formData.append('out_trade_no', document.getElementById('distributeOrderNo').value);
+            formData.append('remark', document.getElementById('distributeRemark').value);
+
+            try {
+                const data = await postForm('/admin/ldc/distribute', formData);
+                showToast(data.msg || '分发完成');
+                if (data.success) {
+                    setTimeout(() => window.location.reload(), 900);
+                }
+            } catch (error) {
+                showToast('分发失败，请稍后重试');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .section-body {
+            padding: 24px;
+        }
+
+        .settings-form {
+            display: grid;
+            gap: 18px;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .settings-grid .full-width {
+            grid-column: 1 / -1;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        .setting-help {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+        .setting-summary {
+            padding: 14px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-neutral { background: #e2e8f0; color: #475569; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 2s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @media (max-width: 720px) {
+            .header {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 16px;
+            }
+            .header-links a {
+                margin-left: 0;
+            }
+            .container {
+                padding: 20px 12px 36px;
+            }
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">⚡ 个人中心</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <div class="section-header">
+                <h2>修改账号信息</h2>
+                <span class="badge badge-neutral">当前账号：{{ admin_username }}</span>
+            </div>
+            <div class="section-body">
+                <form class="settings-form" id="accountSettingsForm">
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>当前用户名</label>
+                            <input type="text" value="{{ admin_username }}" readonly>
+                            <div class="setting-help">这里显示你当前登录使用的账号。</div>
+                        </div>
+                        <div class="form-group">
+                            <label>新用户名</label>
+                            <input type="text" id="adminNewUsername" value="{{ admin_username }}" maxlength="64">
+                            <div class="setting-help">如需修改，请直接输入新的用户名；不改就保持当前值。</div>
+                        </div>
+                        <div class="form-group">
+                            <label>当前密码</label>
+                            <input type="password" id="adminCurrentPassword" placeholder="请输入当前密码" required>
+                        </div>
+                        <div class="form-group">
+                            <label>新密码</label>
+                            <input type="password" id="adminNewPassword" placeholder="留空则不修改密码" minlength="6">
+                            <div class="setting-help">新密码至少 6 个字符。</div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>确认新密码</label>
+                            <input type="password" id="adminConfirmPassword" placeholder="再次输入新密码" minlength="6">
+                        </div>
+                    </div>
+
+                    <div class="setting-summary">
+                        修改用户名后会立即更新当前登录状态；修改密码后，下次登录需要使用新密码。
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存账号信息</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已保存</div>
+
+	    <script>
+	        const csrfToken = {{ csrf_token | tojson }};
+
+	        document.getElementById('accountSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+	            const formData = new FormData();
+	            formData.append('_csrf_token', csrfToken);
+	            formData.append('admin_new_username', document.getElementById('adminNewUsername').value);
+            formData.append('admin_current_password', document.getElementById('adminCurrentPassword').value);
+            formData.append('admin_new_password', document.getElementById('adminNewPassword').value);
+            formData.append('admin_confirm_password', document.getElementById('adminConfirmPassword').value);
+
+            try {
+                const response = await fetch('/admin/account-settings', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.msg || '账号信息已更新');
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>

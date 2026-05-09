@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-title span {
+            font-size: 22px;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .stat-card h3 {
+            color: #888;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .stat-card.total .number { color: #4facfe; }
+        .stat-card.used .number { color: #22c55e; }
+        .stat-card.users .number { color: #a855f7; }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .section-body {
+            padding: 24px;
+        }
+
+        .settings-form {
+            display: grid;
+            gap: 18px;
+        }
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .settings-toggle input {
+            width: 18px;
+            height: 18px;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .settings-grid .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .settings-grid .form-group input {
+            width: 100%;
+        }
+        .setting-help {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+        .setting-summary {
+            padding: 14px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .generate-form {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input {
+            padding: 12px 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 15px;
+            width: 100px;
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .codes-result {
+            margin-top: 20px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        .codes-result.show { display: block; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .codes-textarea {
+            width: 100%;
+            height: 140px;
+            padding: 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            resize: vertical;
+            background: #fafafa;
+        }
+        .codes-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 500;
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            font-size: 14px;
+            border-top: 1px solid #f5f5f5;
+            color: #333;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-success { background: #dcfce7; color: #16a34a; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-neutral { background: #e2e8f0; color: #475569; }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 2s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">
+            <span>⚡</span>
+            兑换码管理
+        </div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card total">
+                <h3>总兑换码</h3>
+                <div class="number">{{ total_codes }}</div>
+            </div>
+            <div class="stat-card used">
+                <h3>已使用</h3>
+                <div class="number">{{ used_codes }}</div>
+            </div>
+            <div class="stat-card users">
+                <h3>用户数</h3>
+                <div class="number">{{ total_users }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>生成兑换码</h2>
+            </div>
+            <div class="section-body">
+                <form class="generate-form" id="generateForm">
+                    <div class="form-group">
+                        <label>数量</label>
+                        <input type="number" id="count" value="10" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>流量 (GB)</label>
+                        <input type="number" id="traffic" value="20" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>天数</label>
+                        <input type="number" id="days" value="30" min="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary">生成</button>
+                </form>
+
+                <div class="codes-result" id="codesResult">
+                    <textarea class="codes-textarea" id="codesText" readonly></textarea>
+                    <div class="codes-actions">
+                        <button class="btn btn-secondary" onclick="copyCodes()">复制</button>
+                        <button class="btn btn-secondary" onclick="downloadCodes()">下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>最近兑换</h2>
+                <a href="/admin/codes" class="btn btn-secondary">全部</a>
+            </div>
+            <div class="section-body" style="padding:0;">
+                {% if recent_redeems %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>兑换码</th>
+                            <th>用户</th>
+                            <th>节点</th>
+                            <th>流量</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recent_redeems %}
+                        <tr>
+                            <td><code>{{ r.code }}</code></td>
+                            <td>{{ r.used_by }}</td>
+                            <td>{{ format_inbound_name(inbounds, r.inbound_id, r.xui_instance_id) if r.inbound_id else '-' }}</td>
+                            <td>{{ r.traffic_limit }}G / {{ r.expire_days }}天</td>
+                            <td>{{ r.used_at[:16] if r.used_at else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">暂无兑换记录</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已复制</div>
+
+	    <script>
+	        const csrfToken = {{ csrf_token | tojson }};
+
+	        document.getElementById('generateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const count = document.getElementById('count').value;
+            const traffic = document.getElementById('traffic').value;
+            const days = document.getElementById('days').value;
+
+	            const formData = new FormData();
+	            formData.append('_csrf_token', csrfToken);
+	            formData.append('count', count);
+            formData.append('traffic', traffic);
+            formData.append('days', days);
+
+            try {
+                const response = await fetch('/admin/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('codesText').value = data.codes.join('\n');
+                    document.getElementById('codesResult').classList.add('show');
+                }
+            } catch (error) {
+                alert('生成失败');
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function copyCodes() {
+            const text = document.getElementById('codesText').value;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制');
+            });
+        }
+
+        function downloadCodes() {
+            const text = document.getElementById('codesText').value;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'codes_' + new Date().toISOString().slice(0,10) + '.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

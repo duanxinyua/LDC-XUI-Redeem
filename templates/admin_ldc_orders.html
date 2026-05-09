@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LDC 兑换记录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .section-body {
+            padding: 24px;
+        }
+
+        .filter-form {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) 220px auto;
+            gap: 16px;
+            align-items: end;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            color: white;
+        }
+        .btn-small {
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .btn-disabled {
+            background: #e5e7eb;
+            color: #94a3b8;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            border-radius: 14px;
+            padding: 18px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        .summary-card h3 {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .summary-card .number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .summary-card.amount .number { color: #4facfe; }
+        .summary-card.traffic .number { color: #16a34a; }
+        .summary-card.refund .number { color: #7c3aed; }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #f0f0f0;
+            border-radius: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1120px;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 500;
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            font-size: 14px;
+            border-top: 1px solid #f5f5f5;
+            color: #333;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-pending { background: #e0f2fe; color: #0284c7; }
+        .badge-paid { background: #fef3c7; color: #d97706; }
+        .badge-completed { background: #dcfce7; color: #16a34a; }
+        .badge-failed { background: #fee2e2; color: #dc2626; }
+        .badge-expired { background: #f1f5f9; color: #64748b; }
+        .badge-refunded { background: #ede9fe; color: #7c3aed; }
+        .badge-neutral { background: #e2e8f0; color: #475569; }
+
+        .actions-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-width: 220px;
+        }
+        .status-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            max-width: 180px;
+        }
+
+        .order-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .order-meta .sub {
+            color: #64748b;
+            font-size: 12px;
+        }
+        .error-text {
+            color: #b91c1c;
+            font-size: 12px;
+            line-height: 1.4;
+            word-break: break-all;
+            max-width: 280px;
+        }
+        .muted-text {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 64px 24px;
+            color: #999;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+            max-width: min(720px, calc(100vw - 32px));
+            line-height: 1.5;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 4s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .pagination {
+            margin-top: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .pagination-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 980px) {
+            .filter-form {
+                grid-template-columns: 1fr;
+            }
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 640px) {
+            .header {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 16px;
+            }
+            .header-links a {
+                margin-left: 0;
+            }
+            .container {
+                padding: 20px 12px 36px;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">⚡ LDC 兑换记录</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/users">用户</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <div class="section-header">
+                <h2>查询记录</h2>
+                <div class="pagination-actions">
+                    <button type="button" class="btn btn-primary" id="syncLdcOrdersBtn">同步订单状态</button>
+                    <a href="/admin/ldc-tools" class="btn btn-secondary">余额与分发</a>
+                    <span class="badge badge-neutral">共 {{ total_orders }} 条</span>
+                </div>
+            </div>
+            <div class="section-body">
+                <form class="filter-form" method="get" action="/admin/ldc-orders">
+                    <div class="form-group">
+                        <label>关键字</label>
+                        <input type="text" name="q" value="{{ q }}" placeholder="订单号 / 交易号 / 邮箱 / UUID / 订单名">
+                    </div>
+                    <div class="form-group">
+                        <label>状态</label>
+                        <select name="status">
+                            <option value="" {% if not status %}selected{% endif %}>全部</option>
+                            <option value="pending" {% if status == 'pending' %}selected{% endif %}>待支付</option>
+                            <option value="paid" {% if status == 'paid' %}selected{% endif %}>已支付</option>
+                            <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成</option>
+                            <option value="failed" {% if status == 'failed' %}selected{% endif %}>失败</option>
+                            <option value="expired" {% if status == 'expired' %}selected{% endif %}>已过期</option>
+                        </select>
+                    </div>
+                    <div class="pagination-actions">
+                        <button type="submit" class="btn btn-primary">查询</button>
+                        <a href="/admin/ldc-orders" class="btn btn-secondary">重置</a>
+                    </div>
+                </form>
+
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>总记录</h3>
+                        <div class="number">{{ summary.total }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>已完成</h3>
+                        <div class="number">{{ summary.completed_count }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>已过期</h3>
+                        <div class="number">{{ summary.expired_count }}</div>
+                    </div>
+                    <div class="summary-card traffic">
+                        <h3>已兑换流量</h3>
+                        <div class="number">{{ summary.total_traffic_gb }} GB</div>
+                    </div>
+                    <div class="summary-card amount">
+                        <h3>累计积分</h3>
+                        <div class="number">{{ '%.2f'|format(summary.total_amount) }}</div>
+                    </div>
+                    <div class="summary-card refund">
+                        <h3>已退款 / 积分</h3>
+                        <div class="number">{{ summary.refunded_count }} / {{ '%.2f'|format(summary.refunded_amount) }}</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    {% if orders %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>状态</th>
+                                <th>流量</th>
+                                <th>积分</th>
+                                <th>节点</th>
+                                <th>用户</th>
+                                <th>时间</th>
+                                <th>备注</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td>
+                                    <div class="order-meta">
+                                        <code>{{ order.out_trade_no }}</code>
+                                        <span class="sub">{{ order.order_name }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if order.status == 'completed' %}
+                                    <span class="badge badge-completed">已完成</span>
+                                    {% elif order.status == 'paid' %}
+                                    <span class="badge badge-paid">已支付</span>
+                                    {% elif order.status == 'failed' %}
+                                    <span class="badge badge-failed">失败</span>
+                                    {% elif order.status == 'expired' %}
+                                    <span class="badge badge-expired">已过期</span>
+                                    {% else %}
+                                    <span class="badge badge-pending">待支付</span>
+                                    {% endif %}
+                                    {% if order.refund_status == 'success' %}
+                                    <div style="margin-top:6px;"><span class="badge badge-refunded">已退款</span></div>
+                                    {% elif order.refund_status == 'failed' %}
+                                    <div style="margin-top:6px;"><span class="badge badge-failed">退款失败</span></div>
+                                    {% endif %}
+                                    <div class="status-actions">
+                                        {% if order.status == 'completed' and order.refund_status != 'success' %}
+                                        <button type="button" class="btn btn-danger btn-small refund-btn" data-order="{{ order.out_trade_no }}" data-amount="{{ order.amount }}">退款</button>
+                                        {% elif order.refund_status == 'success' %}
+                                        <span class="btn btn-disabled btn-small">已退款</span>
+                                        {% else %}
+                                        <span class="btn btn-disabled btn-small">不可退款</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ order.traffic_gb }} GB / {{ order.expire_days }} 天</td>
+                                <td>{{ order.amount }}</td>
+                                <td>{{ format_inbound_name(inbounds, order.inbound_id, order.xui_instance_id) }}</td>
+                                <td>
+                                    <div class="order-meta">
+                                        <span>{{ order.user_email or '-' }}</span>
+                                        {% if order.user_uuid %}
+                                        <span class="sub"><code>{{ order.user_uuid[:12] }}...</code></span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="order-meta">
+                                        <span class="sub">创建：{{ format_dt(order.created_at) }}</span>
+                                        <span class="sub">支付：{{ format_dt(order.paid_at) }}</span>
+                                        <span class="sub">完成：{{ format_dt(order.completed_at) }}</span>
+                                        {% if order.refund_at %}
+                                        <span class="sub">退款：{{ format_dt(order.refund_at) }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if order.error_message %}
+                                    <div class="error-text">{{ order.error_message }}</div>
+                                    {% elif order.refund_message %}
+                                    <div class="muted-text">{{ order.refund_message }}</div>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <button type="button" class="btn btn-secondary btn-small remote-query-btn" data-order="{{ order.out_trade_no }}">远端查询</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty">暂无 LDC 兑换记录</div>
+                    {% endif %}
+                </div>
+
+                {% if total_pages > 1 %}
+                <div class="pagination">
+                    <div>第 {{ page }} / {{ total_pages }} 页</div>
+                    <div class="pagination-actions">
+                        {% if page > 1 %}
+                        <a class="btn btn-secondary" href="{{ url_for('list_ldc_orders', page=page - 1, q=q, status=status) }}">上一页</a>
+                        {% else %}
+                        <span class="btn btn-disabled">上一页</span>
+                        {% endif %}
+
+                        {% if page < total_pages %}
+                        <a class="btn btn-secondary" href="{{ url_for('list_ldc_orders', page=page + 1, q=q, status=status) }}">下一页</a>
+                        {% else %}
+                        <span class="btn btn-disabled">下一页</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">已同步</div>
+    <script>
+        const csrfToken = {{ csrf_token | tojson }};
+        const syncBtn = document.getElementById('syncLdcOrdersBtn');
+        const toast = document.getElementById('toast');
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+        async function postForm(url, formData) {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            return response.json();
+        }
+
+        syncBtn.addEventListener('click', async function () {
+            syncBtn.disabled = true;
+            syncBtn.textContent = '同步中...';
+            try {
+                const formData = new FormData();
+                formData.append('_csrf_token', csrfToken);
+                const data = await postForm('/admin/ldc-orders/sync', formData);
+                showToast(data.msg || '同步完成');
+                if (data.success) {
+                    setTimeout(() => window.location.reload(), 900);
+                } else {
+                    syncBtn.disabled = false;
+                    syncBtn.textContent = '同步订单状态';
+                }
+            } catch (error) {
+                showToast('同步失败，请稍后重试');
+                syncBtn.disabled = false;
+                syncBtn.textContent = '同步订单状态';
+            }
+        });
+
+        document.querySelectorAll('.remote-query-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const orderNo = this.dataset.order;
+                this.disabled = true;
+                this.textContent = '查询中...';
+                try {
+                    const formData = new FormData();
+                    formData.append('_csrf_token', csrfToken);
+                    const data = await postForm(`/admin/ldc-orders/${encodeURIComponent(orderNo)}/remote-query`, formData);
+                    showToast(data.msg || '远端查询完成');
+                } catch (error) {
+                    showToast('远端查询失败');
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '远端查询';
+                }
+            });
+        });
+
+        document.querySelectorAll('.refund-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const orderNo = this.dataset.order;
+                const amount = this.dataset.amount;
+                if (!confirm(`确认退款订单 ${orderNo}，金额 ${amount} 积分？退款成功后系统只记录退款状态，不会自动删除 3x-ui 用户。`)) {
+                    return;
+                }
+
+                this.disabled = true;
+                this.textContent = '退款中...';
+                try {
+                    const formData = new FormData();
+                    formData.append('_csrf_token', csrfToken);
+                    const data = await postForm(`/admin/ldc-orders/${encodeURIComponent(orderNo)}/refund`, formData);
+                    showToast(data.msg || '退款完成');
+                    if (data.success) {
+                        setTimeout(() => window.location.reload(), 900);
+                    } else {
+                        this.disabled = false;
+                        this.textContent = '退款';
+                    }
+                } catch (error) {
+                    showToast('退款失败，请稍后重试');
+                    this.disabled = false;
+                    this.textContent = '退款';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

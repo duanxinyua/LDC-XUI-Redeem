@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节点兑换中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #d9e2ec 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: clamp(10px, 2vh, 18px) 14px 24px;
+        }
+        .container {
+            background: white;
+            padding: 28px 30px;
+            border-radius: 24px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            max-width: 460px;
+            width: 100%;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a1a;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8a8a8a;
+            margin-top: 5px;
+            font-size: 13px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 16px;
+            background: #f5f7fa;
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: white;
+            color: #4facfe;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .input-group {
+            margin-bottom: 14px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 7px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        .input-group input::placeholder {
+            color: #bbb;
+        }
+        .input-help {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #7a7a7a;
+            line-height: 1.5;
+        }
+        .node-select {
+            position: relative;
+        }
+        .node-picker-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .node-picker-trigger {
+            width: 100%;
+            min-height: 50px;
+            padding: 11px 14px;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 14px;
+            background:
+                linear-gradient(135deg, rgba(79, 172, 254, 0.12) 0%, rgba(0, 242, 254, 0.08) 100%),
+                #ffffff;
+            color: #1f2937;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+            transition: all 0.2s;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+        }
+        .node-picker-trigger:hover,
+        .node-select.open .node-picker-trigger {
+            border-color: #4facfe;
+            box-shadow: 0 10px 24px rgba(79, 172, 254, 0.16);
+        }
+        .node-picker-trigger:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.12);
+        }
+        .node-picker-main {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .node-picker-id {
+            flex: 0 0 auto;
+            width: fit-content;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #e0f2fe;
+            color: #0284c7;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+        .node-picker-name {
+            min-width: 0;
+            color: #111827;
+            font-size: 15px;
+            font-weight: 650;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .node-picker-action {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .node-picker-action::after {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #94a3b8;
+            border-bottom: 2px solid #94a3b8;
+            transform: translateY(-2px) rotate(45deg);
+            transition: transform 0.2s;
+        }
+        .node-select.open .node-picker-action::after {
+            transform: translateY(2px) rotate(225deg);
+        }
+        .node-picker-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 30;
+            max-height: 230px;
+            padding: 8px;
+            background: white;
+            border: 1px solid #dbeafe;
+            border-radius: 16px;
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+            overflow-y: auto;
+            display: none;
+        }
+        .node-select.open .node-picker-menu {
+            display: block;
+        }
+        .node-picker-option {
+            width: 100%;
+            padding: 10px 11px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #334155;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.16s;
+        }
+        .node-picker-option:hover {
+            background: #f1f8ff;
+        }
+        .node-picker-option.active {
+            background: linear-gradient(135deg, #e8f4ff 0%, #e6fffb 100%);
+            color: #0369a1;
+        }
+        .node-picker-option .node-picker-id {
+            flex: 0 0 auto;
+        }
+        .node-picker-option .node-picker-name {
+            font-size: 14px;
+        }
+        .notice {
+            padding: 11px 13px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.45;
+            margin-bottom: 14px;
+        }
+        .turnstile-box {
+            margin: 14px 0 4px;
+            min-height: 78px;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .turnstile-help {
+            margin-top: 8px;
+            color: #7a7a7a;
+            font-size: 12px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 4px;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .result {
+            margin-top: 24px;
+            padding: 24px;
+            border-radius: 16px;
+            display: none;
+        }
+        .result.success {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            display: block;
+        }
+        .result.error {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            display: block;
+        }
+        .result h3 {
+            color: #16a34a;
+            margin-bottom: 16px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .result.error h3 {
+            color: #dc2626;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5f0e5;
+            font-size: 14px;
+        }
+        .info-item:last-of-type {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #666;
+        }
+        .info-value {
+            color: #333;
+            font-weight: 500;
+            text-align: right;
+            word-break: break-all;
+        }
+        .copy-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed #86efac;
+        }
+        .copy-section label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 13px;
+        }
+        .copy-input {
+            display: flex;
+            gap: 10px;
+        }
+        .copy-input input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1.5px solid #86efac;
+            border-radius: 10px;
+            font-size: 13px;
+            background: white;
+        }
+        .copy-btn {
+            padding: 12px 18px;
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .copy-btn:hover {
+            background: #16a34a;
+        }
+        .tips {
+            margin-top: 18px;
+            padding: 14px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        .tips-panel {
+            display: none;
+        }
+        .tips-panel.active {
+            display: block;
+        }
+        .tips h4 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 13px;
+        }
+        .tips ul {
+            padding-left: 18px;
+            margin: 0;
+        }
+        .tips li {
+            margin: 4px 0;
+            line-height: 1.45;
+        }
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+            font-size: 14px;
+        }
+        .toast.show {
+            display: block;
+            animation: fadeInOut 2s ease;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 2.5px solid #e5e5e5;
+            border-top: 2.5px solid #4facfe;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading p {
+            color: #666;
+            font-size: 14px;
+        }
+        @media (max-width: 520px) {
+            .container {
+                padding: 24px 18px;
+            }
+            .tabs {
+                flex-wrap: nowrap;
+            }
+            .tab {
+                min-width: 0;
+                padding: 9px 6px;
+                font-size: 12px;
+            }
+            .copy-input {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <h1>节点兑换中心</h1>
+            <p class="subtitle">兑换码或 LDC 积分，都可以直接换订阅</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="redeem">兑换码兑换</div>
+            <div class="tab" data-tab="ldc">LDC 积分兑换</div>
+            <div class="tab" data-tab="query">查询订阅</div>
+        </div>
+
+        <div id="redeemTab" class="tab-content active">
+            {% if inbounds_available %}
+            <form id="redeemForm">
+                <div class="input-group">
+                    <label>选择节点</label>
+                    <div class="node-select" data-node-picker>
+                        {% for node_key, info in inbounds.items() %}
+                            {% if loop.first %}
+                            <input class="node-picker-input" type="hidden" id="inboundSelect" name="inbound" value="{{ node_key }}">
+                            <button class="node-picker-trigger" type="button" data-node-picker-trigger aria-haspopup="listbox" aria-expanded="false">
+                                <span class="node-picker-main">
+                                    <span class="node-picker-id" data-node-picker-current-id>ID: {{ info.id }}</span>
+                                    <span class="node-picker-name" data-node-picker-current-name>{{ info.xui_instance_name }} · {{ info.name }}</span>
+                                </span>
+                                <span class="node-picker-action">切换节点</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                        <div class="node-picker-menu" role="listbox">
+                        {% for node_key, info in inbounds.items() %}
+                            <button class="node-picker-option{% if loop.first %} active{% endif %}" type="button" role="option" data-node-picker-option data-value="{{ node_key }}" data-node-id="{{ info.id }}" data-name="{{ info.xui_instance_name }} · {{ info.name }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                <span class="node-picker-id">ID: {{ info.id }}</span>
+                                <span class="node-picker-name">{{ info.xui_instance_name }} · {{ info.name }}</span>
+                            </button>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>兑换码</label>
+                    <input type="text" id="code" name="code" placeholder="请输入兑换码" maxlength="32" required>
+                </div>
+
+                {% if turnstile_enabled %}
+                <div class="turnstile-box" id="redeemTurnstile"></div>
+                <div class="turnstile-help">点击立即兑换前需要完成人机验证。</div>
+                {% endif %}
+
+                <button type="submit" class="btn">立即兑换</button>
+            </form>
+            {% else %}
+            <div class="notice">当前没有可用节点，请联系管理员上架节点后再兑换。</div>
+            <button type="button" class="btn" disabled>暂不可用</button>
+            {% endif %}
+        </div>
+
+        <div id="ldcTab" class="tab-content">
+            {% if ldc_enabled and inbounds_available %}
+            <form id="ldcForm">
+                <div class="notice">
+	                    当前兑换比例：1GB = {{ ldc_exchange_ratio }} LDC 积分。总流量上限：{{ ldc_total_limit_text }}，已占用（含待支付）：{{ ldc_used_text }}，剩余：{{ ldc_remaining_text }}。
+                </div>
+
+                <div class="input-group">
+                    <label>选择节点</label>
+                    <div class="node-select" data-node-picker>
+                        {% for node_key, info in inbounds.items() %}
+                            {% if loop.first %}
+                            <input class="node-picker-input" type="hidden" id="ldcInboundSelect" name="ldc_inbound" value="{{ node_key }}">
+                            <button class="node-picker-trigger" type="button" data-node-picker-trigger aria-haspopup="listbox" aria-expanded="false">
+                                <span class="node-picker-main">
+                                    <span class="node-picker-id" data-node-picker-current-id>ID: {{ info.id }}</span>
+                                    <span class="node-picker-name" data-node-picker-current-name>{{ info.xui_instance_name }} · {{ info.name }}</span>
+                                </span>
+                                <span class="node-picker-action">切换节点</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                        <div class="node-picker-menu" role="listbox">
+                        {% for node_key, info in inbounds.items() %}
+                            <button class="node-picker-option{% if loop.first %} active{% endif %}" type="button" role="option" data-node-picker-option data-value="{{ node_key }}" data-node-id="{{ info.id }}" data-name="{{ info.xui_instance_name }} · {{ info.name }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                <span class="node-picker-id">ID: {{ info.id }}</span>
+                                <span class="node-picker-name">{{ info.xui_instance_name }} · {{ info.name }}</span>
+                            </button>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>兑换流量 (GB)</label>
+                    <input type="number" id="ldcTraffic" name="traffic" min="{{ ldc_min_traffic }}" max="{{ ldc_max_traffic }}" step="1" value="{{ default_traffic }}" required>
+                    <div class="input-help">支持 {{ ldc_min_traffic }} - {{ ldc_max_traffic }} GB，系统默认有效期 {{ default_days }} 天。</div>
+                </div>
+
+                {% if turnstile_enabled %}
+                <div class="turnstile-box" id="ldcTurnstile"></div>
+                <div class="turnstile-help">点击前往 LDC 支付前需要完成人机验证。</div>
+                {% endif %}
+
+                <button type="submit" class="btn">前往 LDC 支付</button>
+            </form>
+            {% else %}
+            <div class="notice">
+                {% if ldc_enabled and not inbounds_available %}
+                当前没有可用节点，请联系管理员上架节点后再使用 LDC 兑换。
+                {% elif ldc_enabled_setting %}
+                当前服务器还没有配置 LDC 参数，暂时不能使用积分兑换。
+                {% else %}
+                当前未开启 LDC 积分兑换。
+                {% endif %}
+            </div>
+            <button type="button" class="btn" disabled>暂不可用</button>
+            {% endif %}
+        </div>
+
+        <div id="queryTab" class="tab-content">
+            <form id="queryForm">
+                <div class="input-group">
+                    <label>兑换码 / LDC 订单号</label>
+                    <input type="text" id="queryCode" name="queryCode" placeholder="输入已使用的兑换码或 LDC 订单号查询" maxlength="64" required>
+                </div>
+                {% if turnstile_enabled %}
+                <div class="turnstile-box" id="queryTurnstile"></div>
+                <div class="turnstile-help">点击查询订阅前需要完成人机验证。</div>
+                {% endif %}
+                <button type="submit" class="btn">查询订阅</button>
+            </form>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">正在处理中...</p>
+        </div>
+
+        <div class="result" id="result">
+            <h3 id="resultTitle">✓ 处理成功</h3>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="tips">
+            <div class="tips-panel active" data-tips="redeem">
+                <h4>兑换码兑换说明</h4>
+                <ul>
+                    <li>兑换码每个仅限使用一次，兑换成功后会立即生成订阅链接。</li>
+                    <li>兑换码的流量和有效期由管理员生成兑换码时设置。</li>
+                    <li>兑换时需要先选择节点，生成后订阅链接会绑定到所选节点。</li>
+                    <li>兑换完成后，请保存兑换码或订阅链接，后续可在查询页用兑换码找回订阅。</li>
+                </ul>
+            </div>
+            <div class="tips-panel" data-tips="ldc">
+                <h4>LDC 积分兑换说明</h4>
+                <ul>
+                    <li>当前兑换比例：1GB = {{ ldc_exchange_ratio }} LDC 积分，该比例与后台 LDC 设置同步。</li>
+                    <li>当前支持兑换 {{ ldc_min_traffic }} - {{ ldc_max_traffic }} GB，系统默认有效期 {{ default_days }} 天。</li>
+	                    <li>当前总流量上限：{{ ldc_total_limit_text }}，已占用（含待支付）：{{ ldc_used_text }}，剩余：{{ ldc_remaining_text }}。</li>
+                    <li>支付完成后会自动生成订阅；如关闭支付返回页，可在查询页输入 LDC 订单号找回订阅。</li>
+                </ul>
+            </div>
+            <div class="tips-panel" data-tips="query">
+                <h4>查询订阅说明</h4>
+                <ul>
+                    <li>支持输入已使用的兑换码，找回兑换码生成的订阅链接。</li>
+                    <li>支持输入已完成的 LDC 订单号，找回 LDC 积分兑换生成的订阅链接。</li>
+                    <li>如果 LDC 订单已支付但订阅还未生成，系统会尝试自动补生成订阅。</li>
+                    <li>未使用的兑换码、未支付的 LDC 订单，暂时查询不到订阅链接。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已复制到剪贴板</div>
+
+    {% if turnstile_enabled %}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    {% endif %}
+    <script>
+        const turnstileEnabled = {{ turnstile_enabled | tojson }};
+        const turnstileSiteKey = {{ turnstile_site_key | tojson }};
+        const turnstileWidgets = {};
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const result = document.getElementById('result');
+        const tipsPanels = document.querySelectorAll('.tips-panel');
+        const validTabs = new Set(['redeem', 'ldc', 'query']);
+
+        function getInitialTab() {
+            const params = new URLSearchParams(window.location.search);
+            const tabFromQuery = params.get('tab');
+            const tabFromHash = window.location.hash.replace('#', '');
+            const tabName = tabFromQuery || tabFromHash;
+            return validTabs.has(tabName) ? tabName : 'redeem';
+        }
+
+        function activateTab(tabName, updateUrl = true) {
+            if (!validTabs.has(tabName)) {
+                tabName = 'redeem';
+            }
+            closeNodePickers();
+            tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === tabName));
+            tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === tabName + 'Tab');
+            });
+            tipsPanels.forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tips === tabName);
+            });
+            if (updateUrl) {
+                const url = new URL(window.location.href);
+                if (tabName === 'redeem') {
+                    url.searchParams.delete('tab');
+                } else {
+                    url.searchParams.set('tab', tabName);
+                }
+                url.hash = '';
+                window.history.replaceState(null, '', url.pathname + url.search);
+            }
+            hideResult();
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+        });
+
+        function closeNodePickers(except = null) {
+            document.querySelectorAll('[data-node-picker]').forEach(picker => {
+                if (picker === except) {
+                    return;
+                }
+                picker.classList.remove('open');
+                picker.querySelector('[data-node-picker-trigger]')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        document.querySelectorAll('[data-node-picker]').forEach(picker => {
+            const trigger = picker.querySelector('[data-node-picker-trigger]');
+            const input = picker.querySelector('.node-picker-input');
+            const currentId = picker.querySelector('[data-node-picker-current-id]');
+            const currentName = picker.querySelector('[data-node-picker-current-name]');
+            const options = picker.querySelectorAll('[data-node-picker-option]');
+
+            if (!trigger || !input) {
+                return;
+            }
+
+            trigger.addEventListener('click', () => {
+                const willOpen = !picker.classList.contains('open');
+                closeNodePickers(picker);
+                picker.classList.toggle('open', willOpen);
+                trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            });
+
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    input.value = option.dataset.value || '';
+                    if (currentId) {
+                        currentId.textContent = `ID: ${option.dataset.nodeId || '-'}`;
+                    }
+                    if (currentName) {
+                        currentName.textContent = option.dataset.name || '未命名节点';
+                    }
+                    options.forEach(item => {
+                        const active = item === option;
+                        item.classList.toggle('active', active);
+                        item.setAttribute('aria-selected', active ? 'true' : 'false');
+                    });
+                    closeNodePickers();
+                });
+            });
+        });
+
+        document.addEventListener('click', event => {
+            if (!event.target.closest('[data-node-picker]')) {
+                closeNodePickers();
+            }
+        });
+
+        activateTab(getInitialTab(), false);
+
+        function setLoading(visible, text = '正在处理中...') {
+            loading.style.display = visible ? 'block' : 'none';
+            loadingText.textContent = text;
+        }
+
+        function hideResult() {
+            result.style.display = 'none';
+        }
+
+        function renderTurnstileWidgets() {
+            if (!turnstileEnabled || !window.turnstile) {
+                return;
+            }
+            [
+                ['redeem', 'redeemTurnstile'],
+                ['ldc', 'ldcTurnstile'],
+                ['query', 'queryTurnstile']
+            ].forEach(([name, elementId]) => {
+                const element = document.getElementById(elementId);
+                if (element && !turnstileWidgets[name]) {
+                    turnstileWidgets[name] = window.turnstile.render(element, {
+                        sitekey: turnstileSiteKey,
+                        theme: 'light',
+                        size: 'flexible'
+                    });
+                }
+            });
+        }
+
+        function getTurnstileToken(name) {
+            if (!turnstileEnabled) {
+                return '';
+            }
+            if (!window.turnstile || !turnstileWidgets[name]) {
+                return '';
+            }
+            return window.turnstile.getResponse(turnstileWidgets[name]) || '';
+        }
+
+        function resetTurnstile(name) {
+            if (turnstileEnabled && window.turnstile && turnstileWidgets[name]) {
+                window.turnstile.reset(turnstileWidgets[name]);
+            }
+        }
+
+        if (turnstileEnabled) {
+            const turnstileTimer = setInterval(() => {
+                if (window.turnstile) {
+                    renderTurnstileWidgets();
+                    clearInterval(turnstileTimer);
+                }
+            }, 120);
+        }
+
+	        function createInfoItem(label, value) {
+	            const item = document.createElement('div');
+	            item.className = 'info-item';
+
+	            const labelNode = document.createElement('span');
+	            labelNode.className = 'info-label';
+	            labelNode.textContent = label;
+
+	            const valueNode = document.createElement('span');
+	            valueNode.className = 'info-value';
+	            valueNode.textContent = value || '-';
+
+	            item.append(labelNode, valueNode);
+	            return item;
+	        }
+
+	        function createCopySection(subUrl) {
+	            const section = document.createElement('div');
+	            section.className = 'copy-section';
+
+	            const label = document.createElement('label');
+	            label.textContent = '订阅链接';
+
+	            const row = document.createElement('div');
+	            row.className = 'copy-input';
+
+	            const input = document.createElement('input');
+	            input.type = 'text';
+	            input.value = subUrl || '';
+	            input.readOnly = true;
+
+	            const button = document.createElement('button');
+	            button.className = 'copy-btn';
+	            button.type = 'button';
+	            button.textContent = '复制';
+	            button.addEventListener('click', () => copyToClipboard(subUrl || ''));
+
+	            row.append(input, button);
+	            section.append(label, row);
+	            return section;
+	        }
+
+	        function showError(title, message) {
+	            const content = document.getElementById('resultContent');
+	            const text = document.createElement('p');
+	            text.style.color = '#dc2626';
+	            text.style.textAlign = 'center';
+	            text.style.padding = '10px 0';
+	            text.textContent = message || '操作失败';
+
+	            result.className = 'result error';
+	            document.getElementById('resultTitle').textContent = title;
+	            content.replaceChildren(text);
+	            result.style.display = 'block';
+	        }
+
+	        function showResult(data, title = '✓ 处理成功') {
+	            const content = document.getElementById('resultContent');
+	            const nodes = [];
+
+	            if (data.order_no) {
+	                nodes.push(createInfoItem('订单号', data.order_no));
+	            }
+	            nodes.push(createInfoItem('用户标识', data.email));
+	            nodes.push(createInfoItem('节点', data.inbound_name));
+	            nodes.push(createInfoItem('流量限额', data.traffic_limit));
+	            nodes.push(createInfoItem('有效期', `${data.expire_days || '-'} 天`));
+	            nodes.push(createCopySection(data.sub_url));
+
+	            result.className = 'result success';
+	            document.getElementById('resultTitle').textContent = title;
+	            content.replaceChildren(...nodes);
+	            result.style.display = 'block';
+	        }
+
+        async function postForm(url, formData) {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            return response.json();
+        }
+
+        document.getElementById('redeemForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const code = document.getElementById('code').value.trim().toUpperCase();
+            const inbound = document.getElementById('inboundSelect')?.value || '14';
+            const btn = document.querySelector('#redeemForm .btn');
+
+            if (!code) {
+                alert('请输入兑换码');
+                return;
+            }
+
+            const turnstileToken = getTurnstileToken('redeem');
+            if (turnstileEnabled && !turnstileToken) {
+                alert('请先完成人机验证');
+                return;
+            }
+
+            setLoading(true, '正在生成订阅...');
+            hideResult();
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('code', code);
+                formData.append('inbound', inbound);
+                formData.append('cf-turnstile-response', turnstileToken);
+
+                const data = await postForm('/redeem', formData);
+                setLoading(false);
+                btn.disabled = false;
+                resetTurnstile('redeem');
+
+                if (data.success) {
+                    showResult(data.data, '✓ 兑换成功');
+                } else {
+                    showError('✕ 兑换失败', data.msg || '兑换失败');
+                }
+            } catch (error) {
+                setLoading(false);
+                btn.disabled = false;
+                resetTurnstile('redeem');
+                showError('✕ 网络错误', '请检查网络后重试');
+            }
+        });
+
+        const ldcForm = document.getElementById('ldcForm');
+        if (ldcForm) {
+            ldcForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const traffic = parseInt(document.getElementById('ldcTraffic').value, 10);
+                const inbound = document.getElementById('ldcInboundSelect')?.value || '14';
+                const btn = document.querySelector('#ldcForm .btn');
+
+                if (!traffic || traffic < {{ ldc_min_traffic }} || traffic > {{ ldc_max_traffic }}) {
+                    alert('请输入有效的兑换流量');
+                    return;
+                }
+
+                const turnstileToken = getTurnstileToken('ldc');
+                if (turnstileEnabled && !turnstileToken) {
+                    alert('请先完成人机验证');
+                    return;
+                }
+
+                setLoading(true, '正在创建积分订单...');
+                hideResult();
+                btn.disabled = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('traffic', traffic);
+                    formData.append('inbound', inbound);
+                    formData.append('cf-turnstile-response', turnstileToken);
+
+                    const data = await postForm('/ldc/create', formData);
+                    setLoading(false);
+                    btn.disabled = false;
+                    resetTurnstile('ldc');
+
+                    if (data.success && data.pay_url) {
+                        window.location.href = data.pay_url;
+                        return;
+                    }
+
+                    showError('✕ 创建失败', data.msg || '积分订单创建失败');
+                } catch (error) {
+                    setLoading(false);
+                    btn.disabled = false;
+                    resetTurnstile('ldc');
+                    showError('✕ 网络错误', '请检查网络后重试');
+                }
+            });
+        }
+
+        document.getElementById('queryForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const code = document.getElementById('queryCode').value.trim().toUpperCase();
+            const btn = document.querySelector('#queryForm .btn');
+
+            if (!code) {
+                alert('请输入兑换码或 LDC 订单号');
+                return;
+            }
+
+            const turnstileToken = getTurnstileToken('query');
+            if (turnstileEnabled && !turnstileToken) {
+                alert('请先完成人机验证');
+                return;
+            }
+
+            setLoading(true, '正在查询订阅...');
+            hideResult();
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('code', code);
+                formData.append('cf-turnstile-response', turnstileToken);
+
+                const data = await postForm('/query', formData);
+                setLoading(false);
+                btn.disabled = false;
+                resetTurnstile('query');
+
+                if (data.success) {
+                    showResult(data.data, '✓ 查询成功');
+                } else {
+                    showError('✕ 查询失败', data.msg || '查询失败');
+                }
+            } catch (error) {
+                setLoading(false);
+                btn.disabled = false;
+                resetTurnstile('query');
+                showError('✕ 网络错误', '请检查网络后重试');
+            }
+        });
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function () {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        }
+    </script>
+</body>
+</html>

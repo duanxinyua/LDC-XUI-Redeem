@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户列表</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-links a {
+            color: #666;
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+        }
+        .header-links a:hover { color: #4facfe; }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 500;
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            font-size: 14px;
+            border-top: 1px solid #f5f5f5;
+            color: #333;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-active { background: #dcfce7; color: #16a34a; }
+        .badge-expired { background: #fee2e2; color: #dc2626; }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover { background: #3b9fef; }
+
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            display: block;
+            animation: toastIn 2s ease;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">⚡ 用户列表</div>
+        <div class="header-links">
+            <a href="/">用户页面</a>
+            <a href="/admin">后台</a>
+            <a href="/admin/settings">设置</a>
+            <a href="/admin/codes">兑换码</a>
+            <a href="/admin/ldc-orders">LDC记录</a>
+            <a href="/admin/ldc-tools">LDC工具</a>
+            <a href="/admin/logout">退出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <div class="section-header">
+                <h2>全部用户</h2>
+            </div>
+            <div class="table-wrapper">
+                {% if users %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>UUID</th>
+                            <th>邮箱</th>
+                            <th>节点</th>
+                            <th>流量</th>
+                            <th>到期</th>
+                            <th>状态</th>
+                            <th>兑换码</th>
+                            <th>订阅</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><code>{{ user.uuid[:12] }}...</code></td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ format_inbound_name(inbounds, user.inbound_id, user.xui_instance_id) if user.inbound_id else '-' }}</td>
+                            <td>{{ user.traffic_limit }}G</td>
+                            <td>{{ user.expire_at[:10] if user.expire_at else '-' }}</td>
+                            <td>
+                                {% if user.expire_at and user.expire_at > now %}
+                                <span class="badge badge-active">有效</span>
+                                {% else %}
+                                <span class="badge badge-expired">过期</span>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ user.redeem_code }}</code></td>
+                            <td>
+                                <button class="copy-btn" onclick="copySub('{{ user.uuid }}')">复制</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">暂无用户</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已复制</div>
+
+    <script>
+        function copySub(uuid) {
+            const url = 'https://{{ domain }}/sub/' + uuid;
+            navigator.clipboard.writeText(url).then(() => {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        }
+    </script>
+</body>
+</html>
