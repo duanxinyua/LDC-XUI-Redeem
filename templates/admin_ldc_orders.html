@@ -224,6 +224,8 @@
         .badge-failed { background: #fee2e2; color: #dc2626; }
         .badge-expired { background: #f1f5f9; color: #64748b; }
         .badge-refunded { background: #ede9fe; color: #7c3aed; }
+        .badge-disabled { background: #cffafe; color: #0891b2; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
         .badge-neutral { background: #e2e8f0; color: #475569; }
         .order-count-badge {
             min-height: 42px;
@@ -463,6 +465,11 @@
                                     {% endif %}
                                     {% if order.refund_status == 'success' %}
                                     <div style="margin-top:6px;"><span class="badge badge-refunded">已退款</span></div>
+                                    {% if order.client_disabled_status == 'success' %}
+                                    <div style="margin-top:6px;"><span class="badge badge-disabled">客户端已禁用</span></div>
+                                    {% else %}
+                                    <div style="margin-top:6px;"><span class="badge badge-warning">待禁用客户端</span></div>
+                                    {% endif %}
                                     {% elif order.refund_status == 'failed' %}
                                     <div style="margin-top:6px;"><span class="badge badge-failed">退款失败</span></div>
                                     {% endif %}
@@ -491,9 +498,14 @@
                                 <td>
                                     {% if order.error_message %}
                                     <div class="error-text">{{ order.error_message }}</div>
-                                    {% elif order.refund_message %}
+                                    {% endif %}
+                                    {% if order.refund_message %}
                                     <div class="muted-text">{{ order.refund_message }}</div>
-                                    {% else %}
+                                    {% endif %}
+                                    {% if order.client_disable_message %}
+                                    <div class="muted-text">{{ order.client_disable_message }}</div>
+                                    {% endif %}
+                                    {% if not order.error_message and not order.refund_message and not order.client_disable_message %}
                                     -
                                     {% endif %}
                                 </td>
@@ -504,6 +516,9 @@
                                         <button type="button" class="btn btn-danger btn-small refund-btn" data-order="{{ order.out_trade_no }}" data-amount="{{ order.amount }}">退款</button>
                                         {% elif order.refund_status == 'success' %}
                                         <span class="btn btn-disabled btn-small">已退款</span>
+                                        {% if order.client_disabled_status != 'success' %}
+                                        <button type="button" class="btn btn-danger btn-small disable-client-btn" data-order="{{ order.out_trade_no }}">禁用客户端</button>
+                                        {% endif %}
                                         {% else %}
                                         <span class="btn btn-disabled btn-small">不可退款</span>
                                         {% endif %}
@@ -631,6 +646,34 @@
                     showToast('退款失败，请稍后重试');
                     this.disabled = false;
                     this.textContent = '退款';
+                }
+            });
+        });
+
+        document.querySelectorAll('.disable-client-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const orderNo = this.dataset.order;
+                if (!confirm(`确认禁用订单 ${orderNo} 对应的 3x-ui 客户端？禁用成功后才会释放该订单占用的 LDC 流量额度。`)) {
+                    return;
+                }
+
+                this.disabled = true;
+                this.textContent = '禁用中...';
+                try {
+                    const formData = new FormData();
+                    formData.append('_csrf_token', csrfToken);
+                    const data = await postForm(`/admin/ldc-orders/${encodeURIComponent(orderNo)}/disable-client`, formData);
+                    showToast(data.msg || (data.success ? '客户端已禁用' : '客户端禁用失败'));
+                    if (data.success) {
+                        setTimeout(() => window.location.reload(), 900);
+                    } else {
+                        this.disabled = false;
+                        this.textContent = '禁用客户端';
+                    }
+                } catch (error) {
+                    showToast('客户端禁用失败，请稍后重试');
+                    this.disabled = false;
+                    this.textContent = '禁用客户端';
                 }
             });
         });

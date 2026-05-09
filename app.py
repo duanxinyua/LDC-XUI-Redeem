@@ -235,6 +235,9 @@ def init_db():
             refund_at DATETIME,
             refund_payload TEXT,
             refund_message TEXT,
+            client_disabled_status VARCHAR(16),
+            client_disabled_at DATETIME,
+            client_disable_message TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -282,6 +285,9 @@ def init_db():
         'refund_at': "ALTER TABLE ldc_orders ADD COLUMN refund_at DATETIME",
         'refund_payload': "ALTER TABLE ldc_orders ADD COLUMN refund_payload TEXT",
         'refund_message': "ALTER TABLE ldc_orders ADD COLUMN refund_message TEXT",
+        'client_disabled_status': "ALTER TABLE ldc_orders ADD COLUMN client_disabled_status VARCHAR(16)",
+        'client_disabled_at': "ALTER TABLE ldc_orders ADD COLUMN client_disabled_at DATETIME",
+        'client_disable_message': "ALTER TABLE ldc_orders ADD COLUMN client_disable_message TEXT",
     }
     for column, sql in ldc_order_migrations.items():
         if column not in ldc_order_columns:
@@ -910,7 +916,10 @@ def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False):
             SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
             FROM ldc_orders
             WHERE status IN {status_sql}
-              AND COALESCE(refund_status, '') != 'success'
+              AND NOT (
+                  COALESCE(refund_status, '') = 'success'
+                  AND COALESCE(client_disabled_status, '') = 'success'
+              )
               AND out_trade_no != ?
         ''', (exclude_order_no,))
     else:
@@ -918,7 +927,10 @@ def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False):
             SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
             FROM ldc_orders
             WHERE status IN {status_sql}
-              AND COALESCE(refund_status, '') != 'success'
+              AND NOT (
+                  COALESCE(refund_status, '') = 'success'
+                  AND COALESCE(client_disabled_status, '') = 'success'
+              )
         ''')
     used_gb = int(cursor.fetchone()['used_gb'] or 0)
 
@@ -2634,8 +2646,28 @@ def list_ldc_orders():
             COALESCE(SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END), 0) AS expired_count,
             COALESCE(SUM(CASE WHEN refund_status = 'success' THEN 1 ELSE 0 END), 0) AS refunded_count,
             COALESCE(SUM(CASE WHEN refund_status = 'success' THEN CAST(amount AS REAL) ELSE 0 END), 0) AS refunded_amount,
-            COALESCE(SUM(CASE WHEN status IN ('paid', 'completed') THEN traffic_gb ELSE 0 END), 0) AS total_traffic_gb,
-            COALESCE(SUM(CASE WHEN status IN ('paid', 'completed') THEN CAST(amount AS REAL) ELSE 0 END), 0) AS total_amount
+            COALESCE(SUM(
+                CASE
+                    WHEN status IN ('paid', 'completed')
+                     AND NOT (
+                         COALESCE(refund_status, '') = 'success'
+                         AND COALESCE(client_disabled_status, '') = 'success'
+                     )
+                    THEN traffic_gb
+                    ELSE 0
+                END
+            ), 0) AS total_traffic_gb,
+            COALESCE(SUM(
+                CASE
+                    WHEN status IN ('paid', 'completed')
+                     AND NOT (
+                         COALESCE(refund_status, '') = 'success'
+                         AND COALESCE(client_disabled_status, '') = 'success'
+                     )
+                    THEN CAST(amount AS REAL)
+                    ELSE 0
+                END
+            ), 0) AS total_amount
         FROM ldc_orders
     ''')
     summary = cursor.fetchone()
@@ -2876,9 +2908,34 @@ def admin_disable_ldc_order_client(out_trade_no):
     if ok:
         conn = get_db()
         cursor = conn.cursor()
+        disabled_at = local_now()
         cursor.execute(
             "UPDATE users SET expire_at = ? WHERE uuid = ?",
-            (local_now(), user_uuid)
+            (disabled_at, user_uuid)
+        )
+        cursor.execute(
+            """
+            UPDATE ldc_orders
+            SET client_disabled_status = 'success',
+                client_disabled_at = ?,
+                client_disable_message = ?
+            WHERE out_trade_no = ?
+            """,
+            (disabled_at, message, out_trade_no)
+        )
+        conn.commit()
+        conn.close()
+    else:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE ldc_orders
+            SET client_disabled_status = 'failed',
+                client_disable_message = ?
+            WHERE out_trade_no = ?
+            """,
+            (message, out_trade_no)
         )
         conn.commit()
         conn.close()
