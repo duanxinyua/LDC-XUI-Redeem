@@ -148,7 +148,7 @@ ADMIN_PASSWORD=admin
 | --- | --- |
 | `/admin` | 后台首页，查看兑换码、用户和最近兑换概览。 |
 | `/admin/settings` | 设置中心，管理 3x-ui 面板、LDC 兑换、Turnstile 和管理员账号。 |
-| `/admin/ldc-orders` | LDC 兑换记录，支持订单查询、同步、退款。 |
+| `/admin/ldc-orders` | LDC 兑换记录，显示订单总数，支持订单查询、状态同步、远端查询和退款。 |
 | `/admin/ldc-tools` | LDC 商户分发工具。 |
 | `/admin/codes` | 兑换码列表和生成入口。 |
 | `/admin/users` | 已生成的订阅用户列表。 |

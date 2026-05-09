@@ -225,6 +225,13 @@
         .badge-expired { background: #f1f5f9; color: #64748b; }
         .badge-refunded { background: #ede9fe; color: #7c3aed; }
         .badge-neutral { background: #e2e8f0; color: #475569; }
+        .order-count-badge {
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 14px;
+        }
 
         .actions-cell {
             display: flex;
@@ -308,6 +315,7 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         @media (max-width: 980px) {
@@ -363,7 +371,7 @@
                 <div class="pagination-actions">
                     <button type="button" class="btn btn-primary" id="syncLdcOrdersBtn">同步订单状态</button>
                     <a href="/admin/ldc-tools" class="btn btn-secondary">余额与分发</a>
-                    <span class="badge badge-neutral">共 {{ total_orders }} 条</span>
+                    <span class="badge badge-neutral order-count-badge">共 {{ total_orders }} 条</span>
                 </div>
             </div>
             <div class="section-body">
