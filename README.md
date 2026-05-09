@@ -276,6 +276,14 @@ ADMIN_PASSWORD=admin
 - 定期备份 `redeem.db`，但不要提交到 git。
 - 不要在公开环境暴露 3x-ui 面板。
 
+## 开源发布前检查清单
+
+- 确认仓库未提交 `.env`、`redeem.db`、`redeem.db.bak*`、日志文件。
+- 检查 `.env.example` 仅保留占位符，不包含任何真实密钥或真实域名。
+- 检查 Git 历史里没有误提交过真实 `LDC_KEY`、`TURNSTILE_SECRET_KEY`、3x-ui 密码。
+- 确认生产环境管理员密码已修改，不使用 `admin/admin`。
+- 若启用退款并禁用客户端：退款成功后会释放 LDC 流量占用统计，便于后续继续兑换。
+
 ## License
 
 MIT

@@ -910,6 +910,7 @@ def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False):
             SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
             FROM ldc_orders
             WHERE status IN {status_sql}
+              AND COALESCE(refund_status, '') != 'success'
               AND out_trade_no != ?
         ''', (exclude_order_no,))
     else:
@@ -917,6 +918,7 @@ def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False):
             SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
             FROM ldc_orders
             WHERE status IN {status_sql}
+              AND COALESCE(refund_status, '') != 'success'
         ''')
     used_gb = int(cursor.fetchone()['used_gb'] or 0)
 
