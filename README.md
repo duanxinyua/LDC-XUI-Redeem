@@ -71,6 +71,38 @@ LDC_KEY=your-ldc-key
 LDC_GATEWAY=https://credit.linux.do/epay
 ```
 
+参数含义：
+
+| 参数 | 是否必填 | 说明 |
+| --- | --- | --- |
+| `APP_SECRET_KEY` | 必填 | Flask 会话密钥，用于保护后台登录状态和 CSRF Token。生产环境必须改成足够长的随机字符串，不能使用示例值。 |
+| `ADMIN_USERNAME` | 必填 | 首次初始化数据库时创建的后台管理员用户名。数据库已存在后，修改该值不会覆盖现有管理员账号。 |
+| `ADMIN_PASSWORD` | 必填 | 首次初始化数据库时创建的后台管理员密码。数据库已存在后，修改该值不会覆盖现有管理员密码，可在后台个人中心修改。 |
+| `XUI_HOST` | 必填 | 默认 3x-ui 面板地址，末尾不需要 `/`，例如 `http://127.0.0.1:2053`。后续也可以在后台添加多个 3x-ui 面板。 |
+| `XUI_USERNAME` | 必填 | 默认 3x-ui 面板登录用户名。 |
+| `XUI_PASSWORD` | 必填 | 默认 3x-ui 面板登录密码。该值会写入本地数据库，生产环境不要提交 `.env` 和 `redeem.db`。 |
+| `NODE_DOMAIN` | 必填 | 节点连接使用的域名，也就是订阅中 vmess `add` 字段。通常填写你的节点落地域名或 CDN 域名。 |
+| `SUB_DOMAIN` | 必填 | 兑换系统自身的访问域名，用于生成订阅链接，例如 `redeem.example.com`。 |
+| `PUBLIC_BASE_URL` | 必填 | 用户公网访问兑换系统的完整地址，用于 LDC 支付回调和返回地址，例如 `https://redeem.example.com`。 |
+| `LDC_PID` | 使用 LDC 时必填 | Linux.do Credit 商户 PID。不开启 LDC 积分兑换时可留空。 |
+| `LDC_KEY` | 使用 LDC 时必填 | Linux.do Credit 商户密钥，用于签名和验签。不开启 LDC 积分兑换时可留空。 |
+| `LDC_GATEWAY` | 使用 LDC 时必填 | Linux.do Credit 易支付网关地址，默认是 `https://credit.linux.do/epay`。 |
+
+常用可选参数：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `XUI_EXPIRE_DAYS` | `30` | 兑换成功后创建的 3x-ui 用户默认有效期，单位为天。 |
+| `XUI_TRAFFIC_LIMIT` | `20` | 生成兑换码和 LDC 页面默认兑换流量，单位为 GB。 |
+| `SUB_PORT` | `443` | 订阅中 vmess `port` 字段。 |
+| `SUB_PROTOCOL` | `vmess` | 订阅协议，目前项目主要按 vmess 生成订阅。 |
+| `SUB_SECURITY` | `tls` | 订阅中 vmess `tls` 字段。 |
+| `SUB_NETWORK` | `ws` | 订阅中 vmess `net` 字段。 |
+| `LDC_MIN_TRAFFIC` | `1` | LDC 单次最小兑换流量，单位为 GB。 |
+| `LDC_MAX_TRAFFIC` | `200` | LDC 单次最大兑换流量，单位为 GB。 |
+| `TURNSTILE_SITE_KEY` | 空 | Cloudflare Turnstile 前端 Site Key。 |
+| `TURNSTILE_SECRET_KEY` | 空 | Cloudflare Turnstile 后端 Secret Key。 |
+
 ## 启动
 
 ```bash
