@@ -109,6 +109,31 @@
             box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.14);
             background: rgba(255, 255, 255, 0.88);
         }
+        .password-field {
+            position: relative;
+        }
+        .password-field input {
+            padding-right: 78px;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            border-radius: 10px;
+            padding: 7px 11px;
+            background: rgba(241, 245, 249, 0.92);
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .password-toggle:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
         .turnstile-box {
             width: 100%;
             min-height: 94px;
@@ -210,7 +235,10 @@
                 </div>
                 <div class="input-group">
                     <label>密码</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" data-toggle-password="password" aria-label="显示密码" aria-pressed="false">显示</button>
+                    </div>
                 </div>
                 {% if turnstile_enabled %}
                 <div class="turnstile-box" id="loginTurnstile"></div>
@@ -269,6 +297,19 @@
                 }
             }, 120);
         }
+
+        document.querySelectorAll('[data-toggle-password]').forEach(button => {
+            const input = document.getElementById(button.dataset.togglePassword);
+            if (!input) {
+                return;
+            }
+            button.addEventListener('click', () => {
+                const visible = input.type === 'password';
+                input.type = visible ? 'text' : 'password';
+                button.textContent = visible ? '隐藏' : '显示';
+                button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+            });
+        });
 
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
