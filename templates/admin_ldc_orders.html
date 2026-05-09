@@ -237,14 +237,14 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            max-width: 220px;
+            min-width: 168px;
+            max-width: 260px;
         }
-        .status-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-            max-width: 180px;
+        .actions-cell .btn {
+            min-width: 76px;
+        }
+        .actions-cell .btn-danger {
+            box-shadow: 0 8px 18px rgba(239, 68, 68, 0.18);
         }
 
         .order-meta {
@@ -466,15 +466,6 @@
                                     {% elif order.refund_status == 'failed' %}
                                     <div style="margin-top:6px;"><span class="badge badge-failed">退款失败</span></div>
                                     {% endif %}
-                                    <div class="status-actions">
-                                        {% if order.status == 'completed' and order.refund_status != 'success' %}
-                                        <button type="button" class="btn btn-danger btn-small refund-btn" data-order="{{ order.out_trade_no }}" data-amount="{{ order.amount }}">退款</button>
-                                        {% elif order.refund_status == 'success' %}
-                                        <span class="btn btn-disabled btn-small">已退款</span>
-                                        {% else %}
-                                        <span class="btn btn-disabled btn-small">不可退款</span>
-                                        {% endif %}
-                                    </div>
                                 </td>
                                 <td>{{ order.traffic_gb }} GB / {{ order.expire_days }} 天</td>
                                 <td>{{ order.amount }}</td>
@@ -509,6 +500,13 @@
                                 <td>
                                     <div class="actions-cell">
                                         <button type="button" class="btn btn-secondary btn-small remote-query-btn" data-order="{{ order.out_trade_no }}">远端查询</button>
+                                        {% if order.status == 'completed' and order.refund_status != 'success' %}
+                                        <button type="button" class="btn btn-danger btn-small refund-btn" data-order="{{ order.out_trade_no }}" data-amount="{{ order.amount }}">退款</button>
+                                        {% elif order.refund_status == 'success' %}
+                                        <span class="btn btn-disabled btn-small">已退款</span>
+                                        {% else %}
+                                        <span class="btn btn-disabled btn-small">不可退款</span>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
