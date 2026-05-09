@@ -1604,6 +1604,65 @@ class XUIClient:
             print(f"添加客户端失败: {exc}")
         return None
 
+    def disable_client(self, inbound_id, user_uuid):
+        """禁用指定 UUID 的客户端。"""
+        inbound = self.get_inbound(inbound_id)
+        if not inbound or not inbound.get('success'):
+            return False, '获取 3x-ui 入站配置失败', None
+
+        inbound_obj = inbound['obj']
+        try:
+            settings = json.loads(inbound_obj['settings'])
+        except Exception:
+            settings = {"clients": []}
+
+        clients = settings.get('clients') or []
+        target_client = None
+        for client in clients:
+            if str(client.get('id') or '').strip() == str(user_uuid).strip():
+                target_client = client
+                break
+
+        if not target_client:
+            return False, '未找到对应的 3x-ui 客户端', None
+
+        if target_client.get('enable') is False:
+            return True, '3x-ui 客户端已处于禁用状态', {'already_disabled': True}
+
+        target_client['enable'] = False
+        settings['clients'] = clients
+
+        update_data = {
+            "id": inbound_id,
+            "up": inbound_obj.get('up', 0),
+            "down": inbound_obj.get('down', 0),
+            "total": inbound_obj.get('total', 0),
+            "remark": inbound_obj.get('remark', ''),
+            "enable": inbound_obj.get('enable', True),
+            "expiryTime": inbound_obj.get('expiryTime', 0),
+            "listen": inbound_obj.get('listen', ''),
+            "port": inbound_obj.get('port', 443),
+            "protocol": inbound_obj.get('protocol', 'vmess'),
+            "settings": json.dumps(settings),
+            "streamSettings": inbound_obj.get('streamSettings', '{}'),
+            "sniffing": inbound_obj.get('sniffing', '{}'),
+            "tag": inbound_obj.get('tag', '')
+        }
+
+        url = f"{self.base_url}/panel/api/inbounds/update/{inbound_id}"
+        try:
+            resp = self.session.post(url, data=update_data, timeout=15)
+            if resp.status_code == 200:
+                result = resp.json()
+                if result.get('success'):
+                    return True, '3x-ui 客户端已禁用', result
+                return False, result.get('msg') or '3x-ui 客户端禁用失败', result
+        except Exception as exc:
+            print(f"禁用客户端失败: {exc}")
+            return False, str(exc), None
+
+        return False, '3x-ui 客户端禁用失败', None
+
 
 xui_client = XUIClient()
 
@@ -2783,6 +2842,61 @@ def admin_refund_ldc_order(out_trade_no):
     )
 
     return jsonify({'success': success, 'msg': message})
+
+
+@app.route('/admin/ldc-orders/<out_trade_no>/disable-client', methods=['POST'])
+@admin_required
+@csrf_required
+def admin_disable_ldc_order_client(out_trade_no):
+    """退款成功后禁用该订单对应的 3x-ui 客户端。"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM ldc_orders WHERE out_trade_no = ?", (out_trade_no,))
+    order = cursor.fetchone()
+    conn.close()
+
+    if not order:
+        return jsonify({'success': False, 'msg': '订单不存在'})
+
+    if order['refund_status'] != 'success':
+        return jsonify({'success': False, 'msg': '只有退款成功的订单可以禁用客户端'})
+
+    user_uuid = (order['user_uuid'] or '').strip()
+    if not user_uuid:
+        return jsonify({'success': False, 'msg': '订单没有关联的 3x-ui 客户端'})
+
+    instance = get_xui_instance(row_get(order, 'xui_instance_id', 1))
+    client = XUIClient(instance=instance)
+    if not client.login():
+        return jsonify({'success': False, 'msg': '3x-ui 登录失败，无法禁用客户端'})
+
+    ok, message, payload = client.disable_client(order['inbound_id'], user_uuid)
+    if ok:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET expire_at = ? WHERE uuid = ?",
+            (local_now(), user_uuid)
+        )
+        conn.commit()
+        conn.close()
+
+    record_ldc_api_action(
+        'disable_client',
+        request_payload={
+            'out_trade_no': out_trade_no,
+            'inbound_id': order['inbound_id'],
+            'xui_instance_id': row_get(order, 'xui_instance_id', 1),
+            'user_uuid': user_uuid,
+        },
+        response_payload=payload,
+        success=ok,
+        message=message,
+        out_trade_no=out_trade_no,
+        trade_no=order['trade_no']
+    )
+
+    return jsonify({'success': ok, 'msg': message})
 
 
 @app.route('/admin/ldc/distribute', methods=['POST'])

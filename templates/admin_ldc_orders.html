@@ -602,7 +602,7 @@
             btn.addEventListener('click', async function () {
                 const orderNo = this.dataset.order;
                 const amount = this.dataset.amount;
-                if (!confirm(`确认退款订单 ${orderNo}，金额 ${amount} 积分？退款成功后系统只记录退款状态，不会自动删除 3x-ui 用户。`)) {
+                if (!confirm(`确认退款订单 ${orderNo}，金额 ${amount} 积分？退款成功后会询问是否禁用该订单对应的 3x-ui 客户端。`)) {
                     return;
                 }
 
@@ -614,6 +614,14 @@
                     const data = await postForm(`/admin/ldc-orders/${encodeURIComponent(orderNo)}/refund`, formData);
                     showToast(data.msg || '退款完成');
                     if (data.success) {
+                        const disableClient = confirm(`订单 ${orderNo} 已退款成功。是否立即禁用该订单对应的 3x-ui 客户端？`);
+                        if (disableClient) {
+                            this.textContent = '禁用中...';
+                            const disableFormData = new FormData();
+                            disableFormData.append('_csrf_token', csrfToken);
+                            const disableData = await postForm(`/admin/ldc-orders/${encodeURIComponent(orderNo)}/disable-client`, disableFormData);
+                            showToast(disableData.msg || (disableData.success ? '客户端已禁用' : '客户端禁用失败'));
+                        }
                         setTimeout(() => window.location.reload(), 900);
                     } else {
                         this.disabled = false;
