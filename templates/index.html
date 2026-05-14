@@ -659,6 +659,7 @@
         const turnstileEnabled = {{ turnstile_enabled | tojson }};
         const turnstileSiteKey = {{ turnstile_site_key | tojson }};
         const turnstileWidgets = {};
+        const turnstileStates = {};
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
         const loading = document.getElementById('loading');
@@ -698,6 +699,7 @@
                 window.history.replaceState(null, '', url.pathname + url.search);
             }
             hideResult();
+            ensureTurnstileWidget(tabName);
         }
 
         tabs.forEach(tab => {
@@ -768,23 +770,44 @@
             result.style.display = 'none';
         }
 
-        function renderTurnstileWidgets() {
+        function setTurnstileState(name, state = {}) {
+            turnstileStates[name] = {
+                ready: false,
+                token: '',
+                error: '',
+                ...(turnstileStates[name] || {}),
+                ...state,
+            };
+        }
+
+        function ensureTurnstileWidget(name) {
             if (!turnstileEnabled || !window.turnstile) {
                 return;
             }
-            [
-                ['redeem', 'redeemTurnstile'],
-                ['ldc', 'ldcTurnstile'],
-                ['query', 'queryTurnstile']
-            ].forEach(([name, elementId]) => {
-                const element = document.getElementById(elementId);
-                if (element && !turnstileWidgets[name]) {
-                    turnstileWidgets[name] = window.turnstile.render(element, {
-                        sitekey: turnstileSiteKey,
-                        theme: 'light',
-                        size: 'flexible'
-                    });
-                }
+            const elementMap = {
+                redeem: 'redeemTurnstile',
+                ldc: 'ldcTurnstile',
+                query: 'queryTurnstile'
+            };
+            const elementId = elementMap[name];
+            const element = elementId ? document.getElementById(elementId) : null;
+            if (!element || turnstileWidgets[name]) {
+                return;
+            }
+            setTurnstileState(name, { ready: false, token: '', error: '' });
+            turnstileWidgets[name] = window.turnstile.render(element, {
+                sitekey: turnstileSiteKey,
+                theme: 'light',
+                size: 'flexible',
+                callback(token) {
+                    setTurnstileState(name, { ready: true, token: token || '', error: '' });
+                },
+                'expired-callback'() {
+                    setTurnstileState(name, { ready: false, token: '', error: '验证已过期，请重新勾选。' });
+                },
+                'error-callback'(code) {
+                    setTurnstileState(name, { ready: false, token: '', error: `验证组件加载失败（${code || 'unknown'}）` });
+                },
             });
         }
 
@@ -795,19 +818,25 @@
             if (!window.turnstile || !turnstileWidgets[name]) {
                 return '';
             }
-            return window.turnstile.getResponse(turnstileWidgets[name]) || '';
+            const state = turnstileStates[name] || {};
+            return state.token || window.turnstile.getResponse(turnstileWidgets[name]) || '';
+        }
+
+        function getTurnstileError(name) {
+            return (turnstileStates[name] || {}).error || '';
         }
 
         function resetTurnstile(name) {
             if (turnstileEnabled && window.turnstile && turnstileWidgets[name]) {
                 window.turnstile.reset(turnstileWidgets[name]);
             }
+            setTurnstileState(name, { ready: false, token: '', error: '' });
         }
 
         if (turnstileEnabled) {
             const turnstileTimer = setInterval(() => {
                 if (window.turnstile) {
-                    renderTurnstileWidgets();
+                    ensureTurnstileWidget(getInitialTab());
                     clearInterval(turnstileTimer);
                 }
             }, 120);
@@ -910,7 +939,7 @@
 
             const turnstileToken = getTurnstileToken('redeem');
             if (turnstileEnabled && !turnstileToken) {
-                alert('请先完成人机验证');
+                alert(getTurnstileError('redeem') || '请先完成人机验证');
                 return;
             }
 
@@ -958,7 +987,7 @@
 
                 const turnstileToken = getTurnstileToken('ldc');
                 if (turnstileEnabled && !turnstileToken) {
-                    alert('请先完成人机验证');
+                    alert(getTurnstileError('ldc') || '请先完成人机验证');
                     return;
                 }
 
@@ -1005,7 +1034,7 @@
 
             const turnstileToken = getTurnstileToken('query');
             if (turnstileEnabled && !turnstileToken) {
-                alert('请先完成人机验证');
+                alert(getTurnstileError('query') || '请先完成人机验证');
                 return;
             }
 

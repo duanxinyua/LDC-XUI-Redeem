@@ -7,7 +7,9 @@
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import base64
+import calendar
 import hashlib
+import ipaddress
 import json
 import os
 import secrets
@@ -173,6 +175,7 @@ APP_SETTINGS_DEFAULTS = {
     'xui_host': XUI_CONFIG['host'],
     'xui_username': XUI_CONFIG['username'],
     'xui_password': XUI_CONFIG['password'],
+    'xui_api_token': '',
     'xui_expire_days': str(XUI_CONFIG['expire_days']),
     'xui_traffic_limit': str(XUI_CONFIG['traffic_limit']),
     'xui_enabled_inbounds': '',
@@ -180,6 +183,8 @@ APP_SETTINGS_DEFAULTS = {
     'ldc_enabled': '1' if LDC_CONFIG['pid'] and LDC_CONFIG['key'] else '0',
     'ldc_total_limit_gb': '0',
     'ldc_exchange_ratio': '1',
+    'ldc_quota_reset_day': '1',
+    'ldc_quota_reset_time': '00:00',
     'turnstile_enabled': '1' if os.getenv('TURNSTILE_SITE_KEY') and os.getenv('TURNSTILE_SECRET_KEY') else '0',
     'turnstile_site_key': os.getenv('TURNSTILE_SITE_KEY', '').strip(),
     'turnstile_secret_key': os.getenv('TURNSTILE_SECRET_KEY', '').strip(),
@@ -293,6 +298,7 @@ def init_db():
             host TEXT NOT NULL,
             username VARCHAR(64) NOT NULL,
             password TEXT NOT NULL,
+            api_token TEXT DEFAULT '',
             enabled INTEGER DEFAULT 1,
             sort_order INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -325,6 +331,9 @@ def init_db():
         'ldc_orders': {
             'xui_instance_id': "ALTER TABLE ldc_orders ADD COLUMN xui_instance_id INTEGER",
         },
+        'xui_instances': {
+            'api_token': "ALTER TABLE xui_instances ADD COLUMN api_token TEXT DEFAULT ''",
+        },
     }
     for table_name, migrations in table_migrations.items():
         cursor.execute(f"PRAGMA table_info({table_name})")
@@ -347,14 +356,15 @@ def init_db():
     if cursor.fetchone()['total'] == 0:
         cursor.execute('''
             INSERT INTO xui_instances (
-                name, host, username, password, enabled, sort_order, created_at, updated_at
+                name, host, username, password, api_token, enabled, sort_order, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, 1, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)
         ''', (
             '默认 3x-ui',
             (settings.get('xui_host') or XUI_CONFIG['host'] or 'http://127.0.0.1:2053').strip().rstrip('/'),
             (settings.get('xui_username') or '').strip(),
             settings.get('xui_password') or '',
+            settings.get('xui_api_token') or '',
             local_now(),
             local_now()
         ))
@@ -493,6 +503,7 @@ def normalize_xui_instance(row):
     host = str(row_get(row, 'host', '') or '').strip().rstrip('/')
     username = str(row_get(row, 'username', '') or '').strip()
     password = row_get(row, 'password', '') or ''
+    api_token = str(row_get(row, 'api_token', '') or '').strip()
     enabled = parse_bool(row_get(row, 'enabled', 1), True)
     return {
         'id': instance_id,
@@ -500,10 +511,12 @@ def normalize_xui_instance(row):
         'host': host or 'http://127.0.0.1:2053',
         'username': username,
         'password': password,
+        'api_token': api_token,
         'enabled': enabled,
         'sort_order': parse_int(row_get(row, 'sort_order'), instance_id),
         'password_set': bool(password),
-        'configured': bool(host and username and password),
+        'api_token_set': bool(api_token),
+        'configured': bool(host and (api_token or (username and password))),
     }
 
 
@@ -544,10 +557,12 @@ def get_default_xui_instance(conn=None):
         'host': (settings.get('xui_host') or XUI_CONFIG['host'] or 'http://127.0.0.1:2053').strip().rstrip('/'),
         'username': (settings.get('xui_username') or '').strip(),
         'password': settings.get('xui_password') or '',
+        'api_token': (settings.get('xui_api_token') or '').strip(),
         'enabled': True,
         'sort_order': 1,
         'password_set': bool(settings.get('xui_password')),
-        'configured': bool((settings.get('xui_host') or XUI_CONFIG['host']) and settings.get('xui_username') and settings.get('xui_password')),
+        'api_token_set': bool((settings.get('xui_api_token') or '').strip()),
+        'configured': bool((settings.get('xui_host') or XUI_CONFIG['host']) and ((settings.get('xui_api_token') or '').strip() or (settings.get('xui_username') and settings.get('xui_password')))),
     }
 
 
@@ -867,6 +882,85 @@ def parse_decimal(value, default='1'):
         return Decimal(str(default))
 
 
+def is_probably_xui_api_token(value):
+    """宽松判断输入内容是否像 3x-ui API Token，避免把路径/URL 存进去。"""
+    text = str(value or '').strip()
+    if not text:
+        return False
+    lower = text.lower()
+    if lower.startswith(('http://', 'https://', '/')):
+        return False
+    if any(ch.isspace() for ch in text):
+        return False
+    return len(text) >= 24
+
+
+def parse_time_text(value, default='00:00'):
+    """解析 HH:MM 时间文本，返回规范化后的时、分和文本。"""
+    text = str(value or '').strip()
+    try:
+        hour_text, minute_text = text.split(':', 1)
+        hour = int(hour_text)
+        minute = int(minute_text)
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return hour, minute, f"{hour:02d}:{minute:02d}"
+    except (TypeError, ValueError, AttributeError):
+        pass
+
+    fallback_hour, fallback_minute = 0, 0
+    try:
+        fallback_hour_text, fallback_minute_text = str(default).split(':', 1)
+        fallback_hour = max(0, min(23, int(fallback_hour_text)))
+        fallback_minute = max(0, min(59, int(fallback_minute_text)))
+    except (TypeError, ValueError, AttributeError):
+        pass
+    return fallback_hour, fallback_minute, f"{fallback_hour:02d}:{fallback_minute:02d}"
+
+
+def month_reset_datetime(year, month, reset_day, reset_time):
+    """返回指定月份的额度重置时间；小月按最后一天兜底。"""
+    hour, minute, _ = parse_time_text(reset_time)
+    day = min(max(1, int(reset_day)), calendar.monthrange(year, month)[1])
+    return datetime(year, month, day, hour, minute)
+
+
+def previous_month(year, month):
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
+
+
+def next_month(year, month):
+    if month == 12:
+        return year + 1, 1
+    return year, month + 1
+
+
+def get_ldc_quota_window(settings=None, now=None):
+    """计算当前 LDC 月度额度周期。"""
+    settings = settings or load_app_settings()
+    now = now or local_now()
+    reset_day = max(1, min(31, parse_int(settings.get('ldc_quota_reset_day'), 1)))
+    _, _, reset_time = parse_time_text(settings.get('ldc_quota_reset_time'), '00:00')
+
+    current_reset = month_reset_datetime(now.year, now.month, reset_day, reset_time)
+    if now < current_reset:
+        start_year, start_month = previous_month(now.year, now.month)
+        cycle_start = month_reset_datetime(start_year, start_month, reset_day, reset_time)
+        cycle_end = current_reset
+    else:
+        end_year, end_month = next_month(now.year, now.month)
+        cycle_start = current_reset
+        cycle_end = month_reset_datetime(end_year, end_month, reset_day, reset_time)
+
+    return {
+        'reset_day': reset_day,
+        'reset_time': reset_time,
+        'cycle_start': cycle_start,
+        'cycle_end': cycle_end,
+    }
+
+
 def load_app_settings(conn=None):
     """读取应用配置"""
     close_conn = False
@@ -908,6 +1002,7 @@ def get_xui_runtime_config(conn=None):
     host = (default_instance.get('host') or settings.get('xui_host') or XUI_CONFIG['host']).strip().rstrip('/')
     username = (default_instance.get('username') or settings.get('xui_username') or '').strip()
     password = default_instance.get('password') or settings.get('xui_password') or ''
+    api_token = (default_instance.get('api_token') or settings.get('xui_api_token') or '').strip()
     expire_days = max(1, parse_int(settings.get('xui_expire_days'), XUI_CONFIG['expire_days']))
     traffic_limit = max(1, parse_int(settings.get('xui_traffic_limit'), XUI_CONFIG['traffic_limit']))
 
@@ -917,43 +1012,80 @@ def get_xui_runtime_config(conn=None):
         'host': host or 'http://127.0.0.1:2053',
         'username': username,
         'password': password,
+        'api_token': api_token,
         'expire_days': expire_days,
         'traffic_limit': traffic_limit,
-        'configured': bool(host and username and password),
+        'configured': bool(host and (api_token or (username and password))),
     }
 
 
-def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False):
-    """统计 LDC 流量占用；创建订单时可包含待支付订单做预占。"""
+def get_xui_instance_usage_counts(conn, instance_id):
+    """统计某个 3x-ui 面板在业务表中的引用数量。"""
+    cursor = conn.cursor()
+    counts = {}
+    for table_name in ('redeem_codes', 'users', 'ldc_orders'):
+        try:
+            cursor.execute(
+                f"SELECT COUNT(*) AS total FROM {table_name} WHERE xui_instance_id = ?",
+                (instance_id,)
+            )
+            counts[table_name] = int(cursor.fetchone()['total'] or 0)
+        except sqlite3.OperationalError:
+            counts[table_name] = 0
+    counts['total'] = counts['redeem_codes'] + counts['users'] + counts['ldc_orders']
+    return counts
+
+
+def get_ldc_usage(conn=None, exclude_order_no=None, include_pending=False, settings=None):
+    """统计当前额度周期内的 LDC 流量占用。"""
     close_conn = False
     if conn is None:
         conn = get_db()
         close_conn = True
         expire_pending_ldc_orders(conn)
 
+    if settings is None:
+        settings = load_app_settings(conn)
+    now = local_now()
     cursor = conn.cursor()
-    status_sql = "('pending', 'paid', 'completed')" if include_pending else "('paid', 'completed')"
-    if exclude_order_no:
-        cursor.execute(f'''
-            SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
-            FROM ldc_orders
-            WHERE status IN {status_sql}
-              AND NOT (
-                  COALESCE(refund_status, '') = 'success'
-                  AND COALESCE(client_disabled_status, '') = 'success'
-              )
-              AND out_trade_no != ?
-        ''', (exclude_order_no,))
+    conditions = [
+        "NOT (COALESCE(o.refund_status, '') = 'success' AND COALESCE(o.client_disabled_status, '') = 'success')",
+    ]
+    params = []
+    if include_pending:
+        conditions.append("""
+            (
+                (
+                    o.status = 'pending'
+                    AND datetime(o.created_at, ?) > datetime(?)
+                )
+                OR (
+                    o.status IN ('paid', 'completed')
+                    AND o.user_uuid IS NOT NULL
+                    AND datetime(COALESCE(u.expire_at, datetime(COALESCE(o.completed_at, o.paid_at, o.created_at), '+' || o.expire_days || ' days'))) > datetime(?)
+                )
+            )
+        """)
+        params.extend([f"+{LDC_PENDING_EXPIRE_MINUTES} minutes", now, now])
     else:
-        cursor.execute(f'''
-            SELECT COALESCE(SUM(traffic_gb), 0) AS used_gb
-            FROM ldc_orders
-            WHERE status IN {status_sql}
-              AND NOT (
-                  COALESCE(refund_status, '') = 'success'
-                  AND COALESCE(client_disabled_status, '') = 'success'
-              )
-        ''')
+        conditions.append("""
+            o.status IN ('paid', 'completed')
+            AND o.user_uuid IS NOT NULL
+            AND datetime(COALESCE(u.expire_at, datetime(COALESCE(o.completed_at, o.paid_at, o.created_at), '+' || o.expire_days || ' days'))) > datetime(?)
+        """)
+        params.append(now)
+
+    if exclude_order_no:
+        conditions.append("o.out_trade_no != ?")
+        params.append(exclude_order_no)
+
+    where_sql = " AND ".join(f"({condition})" for condition in conditions)
+    cursor.execute(f'''
+        SELECT COALESCE(SUM(o.traffic_gb), 0) AS used_gb
+        FROM ldc_orders o
+        LEFT JOIN users u ON u.uuid = o.user_uuid
+        WHERE {where_sql}
+    ''', params)
     used_gb = int(cursor.fetchone()['used_gb'] or 0)
 
     if close_conn:
@@ -1009,8 +1141,9 @@ def get_ldc_runtime_config(conn=None):
     ratio = parse_decimal(settings.get('ldc_exchange_ratio'), '1')
     if ratio <= 0:
         ratio = Decimal('1')
-    confirmed_used_gb = get_ldc_usage(conn)
-    reserved_used_gb = get_ldc_usage(conn, include_pending=True)
+    quota_window = get_ldc_quota_window(settings)
+    confirmed_used_gb = get_ldc_usage(conn, settings=settings)
+    reserved_used_gb = get_ldc_usage(conn, include_pending=True, settings=settings)
     remaining_gb = None if total_limit_gb == 0 else max(total_limit_gb - reserved_used_gb, 0)
 
     return {
@@ -1022,6 +1155,10 @@ def get_ldc_runtime_config(conn=None):
         'confirmed_used_gb': confirmed_used_gb,
         'remaining_gb': remaining_gb,
         'has_limit': total_limit_gb > 0,
+        'quota_reset_day': quota_window['reset_day'],
+        'quota_reset_time': quota_window['reset_time'],
+        'quota_cycle_start': quota_window['cycle_start'],
+        'quota_cycle_end': quota_window['cycle_end'],
     }
 
 
@@ -1041,6 +1178,27 @@ def get_turnstile_config(conn=None):
     }
 
 
+def normalize_turnstile_remote_ip(remote_ip):
+    """仅在拿到真实公网 IP 时才上传给 Turnstile。"""
+    text = str(remote_ip or '').split(',')[0].strip()
+    if not text:
+        return ''
+    try:
+        parsed = ipaddress.ip_address(text)
+    except ValueError:
+        return ''
+    if (
+        parsed.is_private or
+        parsed.is_loopback or
+        parsed.is_link_local or
+        parsed.is_multicast or
+        parsed.is_reserved or
+        parsed.is_unspecified
+    ):
+        return ''
+    return parsed.compressed
+
+
 def verify_turnstile_token(token, remote_ip=None, conn=None):
     """服务端校验 Cloudflare Turnstile token。"""
     config = get_turnstile_config(conn)
@@ -1052,13 +1210,16 @@ def verify_turnstile_token(token, remote_ip=None, conn=None):
         return False, '请先完成人机验证'
 
     try:
+        payload = {
+            'secret': config['secret_key'],
+            'response': token,
+        }
+        normalized_ip = normalize_turnstile_remote_ip(remote_ip)
+        if normalized_ip:
+            payload['remoteip'] = normalized_ip
         resp = requests.post(
             'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-            data={
-                'secret': config['secret_key'],
-                'response': token,
-                'remoteip': remote_ip or '',
-            },
+            data=payload,
             timeout=8
         )
         result = resp.json()
@@ -1070,6 +1231,15 @@ def verify_turnstile_token(token, remote_ip=None, conn=None):
         return True, ''
 
     error_codes = ', '.join(result.get('error-codes') or [])
+    print(
+        "Turnstile 校验未通过:",
+        {
+            'error_codes': result.get('error-codes') or [],
+            'hostname': result.get('hostname') or '',
+            'action': result.get('action') or '',
+            'normalized_remote_ip': normalized_ip if 'normalized_ip' in locals() else '',
+        }
+    )
     return False, f"人机验证失败{f'：{error_codes}' if error_codes else ''}"
 
 
@@ -1434,7 +1604,7 @@ def finalize_ldc_order(out_trade_no, trade_no=None, notify_payload=None, inbound
 
         ldc_runtime = get_ldc_runtime_config(conn)
         if ldc_runtime['has_limit']:
-            used_gb = get_ldc_usage(conn, exclude_order_no=out_trade_no)
+            used_gb = get_ldc_usage(conn, exclude_order_no=out_trade_no, include_pending=True)
             if used_gb + int(order['traffic_gb']) > ldc_runtime['total_limit_gb']:
                 cursor.execute('''
                     UPDATE ldc_orders
@@ -1530,30 +1700,78 @@ class XUIClient:
         self.instance = normalize_xui_instance(instance) if instance else None
         self.session = requests.Session()
         self.cookie = None
+        self.api_token = ''
+        self.csrf_token = ''
 
     def reload_config(self):
         """从后台设置刷新 3x-ui 连接参数。"""
         config = self.instance or get_xui_runtime_config()
         self.instance = config
         self.base_url = config['host']
-        self.username = config['username']
-        self.password = config['password']
+        self.username = config.get('username') or ''
+        self.password = config.get('password') or ''
+        self.api_token = (config.get('api_token') or '').strip()
         return config
 
+    def auth_headers(self, extra=None):
+        """生成 3x-ui API 请求头；API Token 模式可跳过 CSRF。"""
+        headers = dict(extra or {})
+        if self.api_token:
+            headers['Authorization'] = f"Bearer {self.api_token}"
+        elif self.csrf_token:
+            headers['X-CSRF-Token'] = self.csrf_token
+        return headers
+
+    def api_get(self, path, **kwargs):
+        url = f"{self.base_url}{path}"
+        headers = self.auth_headers(kwargs.pop('headers', None))
+        return self.session.get(url, headers=headers, **kwargs)
+
+    def api_post(self, path, **kwargs):
+        url = f"{self.base_url}{path}"
+        headers = self.auth_headers(kwargs.pop('headers', None))
+        return self.session.post(url, headers=headers, **kwargs)
+
     def login(self):
-        """登录获取 session"""
+        """校验 API Token 或登录获取 session。"""
         config = self.reload_config()
+        self.csrf_token = ''
         if not config['configured']:
             print("3x-ui 参数未配置")
             return False
 
-        url = f"{self.base_url}/login"
-        data = {
-            'username': self.username,
-            'password': self.password
-        }
+        if self.api_token:
+            try:
+                resp = self.api_get('/panel/api/inbounds/list', timeout=10)
+                if resp.status_code == 200:
+                    result = resp.json()
+                    if result.get('success'):
+                        return True
+                    print(f"3x-ui API Token 校验失败: {result.get('msg') or result}")
+                else:
+                    print(f"3x-ui API Token 校验失败: HTTP {resp.status_code}")
+            except Exception as exc:
+                print(f"3x-ui API Token 校验失败: {exc}")
+            self.api_token = ''
+            print("3x-ui API Token 不可用，回退到账号密码 + CSRF 登录")
+
+        if not self.username or not self.password:
+            print("3x-ui 用户名或密码未配置")
+            return False
+
         try:
-            resp = self.session.post(url, data=data, timeout=10)
+            csrf_resp = self.session.get(f"{self.base_url}/csrf-token", timeout=10)
+            if csrf_resp.status_code == 200:
+                try:
+                    self.csrf_token = csrf_resp.json().get('obj') or ''
+                except Exception:
+                    self.csrf_token = ''
+            headers = {'X-CSRF-Token': self.csrf_token} if self.csrf_token else {}
+            data = {
+                'username': self.username,
+                'password': self.password
+            }
+            resp = self.session.post(f"{self.base_url}/login", data=data, headers=headers, timeout=10)
             if resp.status_code == 200:
                 result = resp.json()
                 if result.get('success'):
@@ -1565,9 +1783,8 @@ class XUIClient:
 
     def get_inbound(self, inbound_id):
         """获取指定入站配置"""
-        url = f"{self.base_url}/panel/api/inbounds/get/{inbound_id}"
         try:
-            resp = self.session.get(url, timeout=10)
+            resp = self.api_get(f"/panel/api/inbounds/get/{inbound_id}", timeout=10)
             if resp.status_code == 200:
                 return resp.json()
         except Exception as exc:
@@ -1576,13 +1793,65 @@ class XUIClient:
 
     def list_inbounds(self):
         """获取全部入站配置"""
-        url = f"{self.base_url}/panel/api/inbounds/list"
         try:
-            resp = self.session.get(url, timeout=10)
+            resp = self.api_get("/panel/api/inbounds/list", timeout=10)
             if resp.status_code == 200:
                 return resp.json()
         except Exception as exc:
             print(f"获取入站列表失败: {exc}")
+        return None
+
+    def build_client_payload(self, user_uuid, email, traffic_limit_gb, expire_days):
+        return {
+            "id": user_uuid,
+            "email": email,
+            "enable": True,
+            "expiryTime": int((local_now() + timedelta(days=expire_days)).timestamp() * 1000),
+            "limitIp": 0,
+            "totalGB": traffic_limit_gb * 1024 * 1024 * 1024,
+            "tgId": "",
+            "subId": "",
+            "comment": "",
+            "security": "auto",
+            "reset": 0,
+            "flow": ""
+        }
+
+    def build_inbound_update_payload(self, inbound_id, inbound_obj, settings):
+        return {
+            "id": inbound_id,
+            "up": inbound_obj.get('up', 0),
+            "down": inbound_obj.get('down', 0),
+            "total": inbound_obj.get('total', 0),
+            "remark": inbound_obj.get('remark', ''),
+            "enable": inbound_obj.get('enable', True),
+            "expiryTime": inbound_obj.get('expiryTime', 0),
+            "listen": inbound_obj.get('listen', ''),
+            "port": inbound_obj.get('port', 443),
+            "protocol": inbound_obj.get('protocol', 'vmess'),
+            "settings": json.dumps(settings),
+            "streamSettings": inbound_obj.get('streamSettings', '{}'),
+            "sniffing": inbound_obj.get('sniffing', '{}'),
+            "tag": inbound_obj.get('tag', '')
+        }
+
+    def post_json_or_form(self, path, payload, timeout=15):
+        """3x-ui 3.0.1 接受 JSON；旧版本不接受时回退 form。"""
+        try:
+            resp = self.api_post(path, json=payload, timeout=timeout)
+            if resp.status_code == 200:
+                return resp.json()
+            print(f"3x-ui JSON 请求失败: {path} HTTP {resp.status_code} {resp.text[:200]}")
+        except Exception as exc:
+            print(f"3x-ui JSON 请求异常: {path} {exc}")
+
+        try:
+            resp = self.api_post(path, data=payload, timeout=timeout)
+            if resp.status_code == 200:
+                return resp.json()
+            print(f"3x-ui form 请求失败: {path} HTTP {resp.status_code} {resp.text[:200]}")
+        except Exception as exc:
+            print(f"3x-ui form 请求异常: {path} {exc}")
         return None
 
     def add_client(self, inbound_id, user_uuid, email, traffic_limit_gb, expire_days):
@@ -1601,46 +1870,20 @@ class XUIClient:
         if 'clients' not in settings:
             settings['clients'] = []
 
-        new_client = {
-            "id": user_uuid,
-            "email": email,
-            "enable": True,
-            "expiryTime": int((local_now() + timedelta(days=expire_days)).timestamp() * 1000),
-            "limitIp": 0,
-            "totalGB": traffic_limit_gb * 1024 * 1024 * 1024,
-            "tgId": "",
-            "subId": "",
-            "comment": "",
-            "security": "auto",
-            "reset": 0
-        }
-        settings['clients'].append(new_client)
-
-        update_data = {
+        new_client = self.build_client_payload(user_uuid, email, traffic_limit_gb, expire_days)
+        add_payload = {
             "id": inbound_id,
-            "up": inbound_obj.get('up', 0),
-            "down": inbound_obj.get('down', 0),
-            "total": inbound_obj.get('total', 0),
-            "remark": inbound_obj.get('remark', ''),
-            "enable": inbound_obj.get('enable', True),
-            "expiryTime": inbound_obj.get('expiryTime', 0),
-            "listen": inbound_obj.get('listen', ''),
-            "port": inbound_obj.get('port', 443),
-            "protocol": inbound_obj.get('protocol', 'vmess'),
-            "settings": json.dumps(settings),
-            "streamSettings": inbound_obj.get('streamSettings', '{}'),
-            "sniffing": inbound_obj.get('sniffing', '{}'),
-            "tag": inbound_obj.get('tag', '')
+            "settings": json.dumps({"clients": [new_client]})
         }
+        result = self.post_json_or_form("/panel/api/inbounds/addClient", add_payload, timeout=15)
+        if result and result.get('success'):
+            return result
+        if result:
+            print(f"addClient 返回失败，尝试旧版整入站更新: {result.get('msg') or result}")
 
-        url = f"{self.base_url}/panel/api/inbounds/update/{inbound_id}"
-        try:
-            resp = self.session.post(url, data=update_data, timeout=15)
-            if resp.status_code == 200:
-                return resp.json()
-        except Exception as exc:
-            print(f"添加客户端失败: {exc}")
-        return None
+        settings['clients'].append(new_client)
+        update_data = self.build_inbound_update_payload(inbound_id, inbound_obj, settings)
+        return self.post_json_or_form(f"/panel/api/inbounds/update/{inbound_id}", update_data, timeout=15)
 
     def disable_client(self, inbound_id, user_uuid):
         """禁用指定 UUID 的客户端。"""
@@ -1668,37 +1911,23 @@ class XUIClient:
             return True, '3x-ui 客户端已处于禁用状态', {'already_disabled': True}
 
         target_client['enable'] = False
-        settings['clients'] = clients
-
-        update_data = {
+        update_client_payload = {
             "id": inbound_id,
-            "up": inbound_obj.get('up', 0),
-            "down": inbound_obj.get('down', 0),
-            "total": inbound_obj.get('total', 0),
-            "remark": inbound_obj.get('remark', ''),
-            "enable": inbound_obj.get('enable', True),
-            "expiryTime": inbound_obj.get('expiryTime', 0),
-            "listen": inbound_obj.get('listen', ''),
-            "port": inbound_obj.get('port', 443),
-            "protocol": inbound_obj.get('protocol', 'vmess'),
-            "settings": json.dumps(settings),
-            "streamSettings": inbound_obj.get('streamSettings', '{}'),
-            "sniffing": inbound_obj.get('sniffing', '{}'),
-            "tag": inbound_obj.get('tag', '')
+            "settings": json.dumps({"clients": [target_client]})
         }
+        result = self.post_json_or_form(f"/panel/api/inbounds/updateClient/{user_uuid}", update_client_payload, timeout=15)
+        if result and result.get('success'):
+            return True, '3x-ui 客户端已禁用', result
+        if result:
+            print(f"updateClient 返回失败，尝试旧版整入站更新: {result.get('msg') or result}")
 
-        url = f"{self.base_url}/panel/api/inbounds/update/{inbound_id}"
-        try:
-            resp = self.session.post(url, data=update_data, timeout=15)
-            if resp.status_code == 200:
-                result = resp.json()
-                if result.get('success'):
-                    return True, '3x-ui 客户端已禁用', result
-                return False, result.get('msg') or '3x-ui 客户端禁用失败', result
-        except Exception as exc:
-            print(f"禁用客户端失败: {exc}")
-            return False, str(exc), None
-
+        settings['clients'] = clients
+        update_data = self.build_inbound_update_payload(inbound_id, inbound_obj, settings)
+        result = self.post_json_or_form(f"/panel/api/inbounds/update/{inbound_id}", update_data, timeout=15)
+        if result and result.get('success'):
+            return True, '3x-ui 客户端已禁用', result
+        if result:
+            return False, result.get('msg') or '3x-ui 客户端禁用失败', result
         return False, '3x-ui 客户端禁用失败', None
 
 
@@ -2311,6 +2540,7 @@ def admin_settings():
     admin_username = session.get('admin_user', '')
     ldc_limit_text = '不限' if ldc_runtime['total_limit_gb'] == 0 else f"{ldc_runtime['total_limit_gb']} GB"
     ldc_remaining_text = '不限' if ldc_runtime['remaining_gb'] is None else f"{ldc_runtime['remaining_gb']} GB"
+    ldc_quota_cycle_text = f"{format_dt(ldc_runtime['quota_cycle_start'])} - {format_dt(ldc_runtime['quota_cycle_end'])}"
     conn.close()
 
     return render_template(
@@ -2334,6 +2564,10 @@ def admin_settings():
         ldc_confirmed_used_gb=ldc_runtime['confirmed_used_gb'],
         ldc_remaining_text=ldc_remaining_text,
         ldc_exchange_ratio=str(ldc_runtime['exchange_ratio']),
+        ldc_quota_reset_day=ldc_runtime['quota_reset_day'],
+        ldc_quota_reset_time=ldc_runtime['quota_reset_time'],
+        ldc_quota_cycle_text=ldc_quota_cycle_text,
+        ldc_quota_cycle_end=format_dt(ldc_runtime['quota_cycle_end']),
         turnstile_enabled=turnstile_config['enabled_setting'],
         turnstile_effective_enabled=turnstile_config['enabled'],
         turnstile_site_key=turnstile_config['site_key'],
@@ -2365,16 +2599,30 @@ def update_ldc_settings():
     except (InvalidOperation, TypeError, ValueError, AttributeError):
         return jsonify({'success': False, 'msg': '兑换比例必须是有效数字'})
 
+    try:
+        quota_reset_day = int(request.form.get('ldc_quota_reset_day', '1'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'msg': '重置日期必须是 1-31 之间的整数'})
+
+    _, _, quota_reset_time = parse_time_text(request.form.get('ldc_quota_reset_time'), '')
+    if quota_reset_time == '00:00' and str(request.form.get('ldc_quota_reset_time') or '').strip() not in ('', '00:00', '0:00', '00:0', '0:0'):
+        return jsonify({'success': False, 'msg': '重置时间必须是 HH:MM 格式'})
+
     if total_limit_gb < 0:
         return jsonify({'success': False, 'msg': '总流量限制不能小于 0'})
 
     if exchange_ratio <= 0:
         return jsonify({'success': False, 'msg': '兑换比例必须大于 0'})
 
+    if quota_reset_day < 1 or quota_reset_day > 31:
+        return jsonify({'success': False, 'msg': '重置日期必须是 1-31 之间的整数'})
+
     save_app_settings({
         'ldc_enabled': enabled,
         'ldc_total_limit_gb': str(total_limit_gb),
-        'ldc_exchange_ratio': format(exchange_ratio.normalize(), 'f') if exchange_ratio == exchange_ratio.to_integral() else format(exchange_ratio, 'f')
+        'ldc_exchange_ratio': format(exchange_ratio.normalize(), 'f') if exchange_ratio == exchange_ratio.to_integral() else format(exchange_ratio, 'f'),
+        'ldc_quota_reset_day': str(quota_reset_day),
+        'ldc_quota_reset_time': quota_reset_time,
     })
 
     return jsonify({'success': True, 'msg': 'LDC 配置已保存'})
@@ -2438,6 +2686,7 @@ def update_xui_settings():
             host = (request.form.get(prefix + 'host') or '').strip().rstrip('/')
             username = (request.form.get(prefix + 'username') or '').strip()
             password = request.form.get(prefix + 'password') or ''
+            api_token = (request.form.get(prefix + 'api_token') or '').strip()
             name = (request.form.get(prefix + 'name') or '').strip() or f"3x-ui #{instance_id}"
             enabled = 1 if request.form.get(prefix + 'enabled') in ('1', 'on', 'true', 'yes') else 0
 
@@ -2446,55 +2695,67 @@ def update_xui_settings():
                     return jsonify({'success': False, 'msg': f'请填写{name}的 3x-ui 地址'})
                 if not host.startswith(('http://', 'https://')):
                     return jsonify({'success': False, 'msg': f'{name} 的地址必须以 http:// 或 https:// 开头'})
-                if not username:
-                    return jsonify({'success': False, 'msg': f'请填写{name}的用户名'})
-                if not password and not instance['password']:
-                    return jsonify({'success': False, 'msg': f'请填写{name}的密码'})
+                if api_token and not is_probably_xui_api_token(api_token):
+                    return jsonify({'success': False, 'msg': f'{name} 的 API Token 格式不正确，请填写 3x-ui 面板里的完整 Token'})
+                has_api_token = bool(api_token or instance.get('api_token'))
+                has_password_login = bool(username and (password or instance['password']))
+                if not has_api_token and not username:
+                    return jsonify({'success': False, 'msg': f'请填写{name}的 API Token，或填写用户名密码'})
+                if not has_api_token and not has_password_login:
+                    return jsonify({'success': False, 'msg': f'请填写{name}的 API Token，或填写完整用户名密码'})
 
-            update_fields = [
+            update_assignments = [
+                "name = ?",
+                "host = ?",
+                "username = ?",
+                "enabled = ?",
+                "updated_at = ?",
+            ]
+            update_values = [
                 name,
                 host or instance['host'],
                 username,
                 enabled,
                 local_now(),
-                instance_id,
             ]
             if password:
-                cursor.execute('''
-                    UPDATE xui_instances
-                    SET name = ?, host = ?, username = ?, password = ?, enabled = ?, updated_at = ?
-                    WHERE id = ?
-                ''', (name, host or instance['host'], username, password, enabled, local_now(), instance_id))
-            else:
-                cursor.execute('''
-                    UPDATE xui_instances
-                    SET name = ?, host = ?, username = ?, enabled = ?, updated_at = ?
-                    WHERE id = ?
-                ''', update_fields)
+                update_assignments.append("password = ?")
+                update_values.append(password)
+            if api_token:
+                update_assignments.append("api_token = ?")
+                update_values.append(api_token)
+            update_values.append(instance_id)
+            cursor.execute(
+                f"UPDATE xui_instances SET {', '.join(update_assignments)} WHERE id = ?",
+                update_values
+            )
 
         new_host = (request.form.get('new_xui_host') or '').strip().rstrip('/')
         new_username = (request.form.get('new_xui_username') or '').strip()
         new_password = request.form.get('new_xui_password') or ''
+        new_api_token = (request.form.get('new_xui_api_token') or '').strip()
         new_name = (request.form.get('new_xui_name') or '').strip()
-        if new_host or new_username or new_password or new_name:
+        if new_host or new_username or new_password or new_api_token or new_name:
             if not new_name:
                 new_name = f"3x-ui #{len(instances) + 1}"
             if not new_host:
                 return jsonify({'success': False, 'msg': '新增面板请填写 3x-ui 地址'})
             if not new_host.startswith(('http://', 'https://')):
                 return jsonify({'success': False, 'msg': '新增面板地址必须以 http:// 或 https:// 开头'})
-            if not new_username:
-                return jsonify({'success': False, 'msg': '新增面板请填写用户名'})
-            if not new_password:
-                return jsonify({'success': False, 'msg': '新增面板请填写密码'})
+            if new_api_token and not is_probably_xui_api_token(new_api_token):
+                return jsonify({'success': False, 'msg': '新增面板的 API Token 格式不正确，请填写 3x-ui 面板里的完整 Token'})
+            if not new_api_token and not new_username:
+                return jsonify({'success': False, 'msg': '新增面板请填写 API Token，或填写用户名密码'})
+            if not new_api_token and not new_password:
+                return jsonify({'success': False, 'msg': '新增面板请填写 API Token，或填写完整用户名密码'})
             cursor.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM xui_instances")
             next_order = cursor.fetchone()['next_order'] or 1
             cursor.execute('''
                 INSERT INTO xui_instances (
-                    name, host, username, password, enabled, sort_order, created_at, updated_at
+                    name, host, username, password, api_token, enabled, sort_order, created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, 1, ?, ?, ?)
-            ''', (new_name, new_host, new_username, new_password, next_order, local_now(), local_now()))
+                VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
+            ''', (new_name, new_host, new_username, new_password, new_api_token, next_order, local_now(), local_now()))
 
         cursor.execute('''
             INSERT INTO app_settings (key, value, updated_at)
@@ -2542,6 +2803,12 @@ def update_xui_settings():
                 VALUES ('xui_password', ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
             ''', (default_instance['password'],))
+        if default_instance.get('api_token'):
+            cursor.execute('''
+                INSERT INTO app_settings (key, value, updated_at)
+                VALUES ('xui_api_token', ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+            ''', (default_instance['api_token'],))
 
         conn.commit()
     except RuntimeError as exc:
@@ -2555,6 +2822,90 @@ def update_xui_settings():
         conn.close()
 
     return jsonify({'success': True, 'msg': '3x-ui 配置已保存'})
+
+
+@app.route('/admin/xui-instances/<int:instance_id>/delete', methods=['POST'])
+@admin_required
+@csrf_required
+def delete_xui_instance(instance_id):
+    """删除指定的 3x-ui 面板。"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        instances = get_xui_instances(conn, include_disabled=True)
+        target = next((instance for instance in instances if instance['id'] == instance_id), None)
+        if not target:
+            return jsonify({'success': False, 'msg': '要删除的 3x-ui 面板不存在'})
+
+        if len(instances) <= 1:
+            return jsonify({'success': False, 'msg': '至少要保留一个 3x-ui 面板，不能删除最后一个'})
+
+        usage = get_xui_instance_usage_counts(conn, instance_id)
+        if usage['total'] > 0:
+            parts = []
+            if usage['redeem_codes']:
+                parts.append(f"兑换码 {usage['redeem_codes']} 条")
+            if usage['users']:
+                parts.append(f"用户 {usage['users']} 条")
+            if usage['ldc_orders']:
+                parts.append(f"LDC 订单 {usage['ldc_orders']} 条")
+            return jsonify({
+                'success': False,
+                'msg': f"无法删除，{target['name']} 仍被引用：{'，'.join(parts)}"
+            })
+
+        settings = load_app_settings(conn)
+        enabled_node_keys = parse_node_key_list(settings.get('xui_enabled_nodes'), default_instance_id=get_default_xui_instance(conn)['id'])
+        filtered_node_keys = sorted(
+            node_key for node_key in enabled_node_keys
+            if not node_key.startswith(f"{instance_id}:")
+        )
+
+        cursor.execute("DELETE FROM xui_instances WHERE id = ?", (instance_id,))
+        if cursor.rowcount <= 0:
+            raise RuntimeError('删除 3x-ui 面板失败，请稍后重试')
+
+        cursor.execute('''
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES ('xui_enabled_nodes', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        ''', (','.join(filtered_node_keys),))
+
+        refreshed_instances = get_xui_instances(conn, include_disabled=True)
+        enabled_instances = [instance for instance in refreshed_instances if instance['enabled']]
+        new_default = enabled_instances[0] if enabled_instances else refreshed_instances[0]
+        cursor.execute('''
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES ('xui_host', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        ''', (new_default['host'],))
+        cursor.execute('''
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES ('xui_username', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        ''', (new_default['username'],))
+        cursor.execute('''
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES ('xui_password', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        ''', (new_default.get('password') or '',))
+        cursor.execute('''
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES ('xui_api_token', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        ''', (new_default.get('api_token') or '',))
+
+        conn.commit()
+        return jsonify({'success': True, 'msg': f"{target['name']} 已删除"})
+    except RuntimeError as exc:
+        conn.rollback()
+        return jsonify({'success': False, 'msg': str(exc)})
+    except Exception as exc:
+        conn.rollback()
+        print(f"删除 3x-ui 面板失败: {exc}")
+        return jsonify({'success': False, 'msg': '删除 3x-ui 面板失败'})
+    finally:
+        conn.close()
 
 
 @app.route('/admin/account-settings', methods=['POST'])
@@ -2667,6 +3018,7 @@ def list_ldc_orders():
 
     conn = get_db()
     expired_count = expire_pending_ldc_orders(conn)
+    ldc_runtime = get_ldc_runtime_config(conn)
     cursor = conn.cursor()
 
     cursor.execute(f'''
@@ -2723,6 +3075,13 @@ def list_ldc_orders():
         FROM ldc_orders
     ''')
     summary = cursor.fetchone()
+    ldc_quota_summary = {
+        'cycle_text': f"{format_dt(ldc_runtime['quota_cycle_start'])} - {format_dt(ldc_runtime['quota_cycle_end'])}",
+        'total_limit_text': '不限' if ldc_runtime['total_limit_gb'] == 0 else f"{ldc_runtime['total_limit_gb']} GB",
+        'used_gb': ldc_runtime['used_gb'],
+        'confirmed_used_gb': ldc_runtime['confirmed_used_gb'],
+        'remaining_text': '不限' if ldc_runtime['remaining_gb'] is None else f"{ldc_runtime['remaining_gb']} GB",
+    }
     conn.close()
 
     return render_template(
@@ -2735,6 +3094,7 @@ def list_ldc_orders():
         q=q,
         status=status,
         summary=summary,
+        ldc_quota_summary=ldc_quota_summary,
         inbounds=inbounds,
         expired_count=expired_count,
         format_dt=format_dt,

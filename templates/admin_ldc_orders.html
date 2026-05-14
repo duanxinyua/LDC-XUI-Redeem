@@ -175,6 +175,15 @@
         .summary-card.amount .number { color: #4facfe; }
         .summary-card.traffic .number { color: #16a34a; }
         .summary-card.refund .number { color: #7c3aed; }
+        .setting-summary {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
 
         .table-wrapper {
             overflow-x: auto;
@@ -400,6 +409,14 @@
                 </form>
 
                 <div class="summary-grid">
+                    <div class="summary-card traffic">
+                        <h3>本周期占用</h3>
+                        <div class="number">{{ ldc_quota_summary.used_gb }} GB</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>本周期剩余</h3>
+                        <div class="number">{{ ldc_quota_summary.remaining_text }}</div>
+                    </div>
                     <div class="summary-card">
                         <h3>总记录</h3>
                         <div class="number">{{ summary.total }}</div>
@@ -424,6 +441,9 @@
                         <h3>已退款 / 积分</h3>
                         <div class="number">{{ summary.refunded_count }} / {{ '%.2f'|format(summary.refunded_amount) }}</div>
                     </div>
+                </div>
+                <div class="setting-summary" style="margin-bottom:18px;">
+                    当前额度周期：{{ ldc_quota_summary.cycle_text }}；总上限：{{ ldc_quota_summary.total_limit_text }}；已完成/已支付未到期：{{ ldc_quota_summary.confirmed_used_gb }} GB。跨周期但未到期的订阅会继续占用本周期额度，到期后自动释放。
                 </div>
 
                 <div class="table-wrapper">

@@ -103,6 +103,9 @@
             margin-bottom: 24px;
             scroll-margin-top: 86px;
         }
+        #xui.section {
+            overflow: visible;
+        }
         .section-header {
             padding: 20px 24px;
             border-bottom: 1px solid #f0f0f0;
@@ -277,6 +280,197 @@
             line-height: 1.4;
             overflow-wrap: anywhere;
         }
+        .selector {
+            position: relative;
+        }
+        .selector-trigger {
+            width: 100%;
+            min-height: 52px;
+            padding: 12px 14px;
+            border: 1.5px solid #dbe3ee;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .selector-trigger:hover,
+        .selector.open .selector-trigger {
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.08);
+        }
+        .selector-trigger-main {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+            text-align: left;
+        }
+        .selector-label {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .selector-subtitle {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .selector-arrow {
+            flex: 0 0 auto;
+            width: 10px;
+            height: 10px;
+            border-right: 2px solid #94a3b8;
+            border-bottom: 2px solid #94a3b8;
+            transform: rotate(45deg);
+            transition: transform 0.2s;
+        }
+        .selector.open .selector-arrow {
+            transform: rotate(225deg);
+        }
+        .selector-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 40;
+            display: none;
+            padding: 12px;
+            border: 1px solid #dbe3ee;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
+        }
+        .selector.open .selector-menu {
+            display: grid;
+            gap: 10px;
+        }
+        .selector-search {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dbe3ee;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .selector-search:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.08);
+        }
+        .selector-options {
+            max-height: 280px;
+            overflow: auto;
+            display: grid;
+            gap: 8px;
+            padding-right: 4px;
+        }
+        .selector-group {
+            display: grid;
+            gap: 8px;
+        }
+        .selector-group-title {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 2px 4px 0;
+        }
+        .selector-option {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .selector-option:hover {
+            border-color: #93c5fd;
+            background: #f0f9ff;
+        }
+        .selector-option input {
+            margin-top: 3px;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
+        }
+        .selector-option-main {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+        }
+        .selector-option-name {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+        .selector-option-meta {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+        .selector-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .selector-chip {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .selector-empty {
+            padding: 14px 12px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+            text-align: center;
+        }
+        .selector-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .selector-action-btn {
+            border: none;
+            background: transparent;
+            color: #0284c7;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 2px;
+        }
+        .selector-action-btn:hover {
+            color: #0369a1;
+        }
+        .inline-panel {
+            border: 1px dashed #cbd5e1;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 14px;
+            display: grid;
+            gap: 14px;
+        }
+        .inline-panel[hidden] {
+            display: none;
+        }
         .xui-instance-list {
             display: grid;
             gap: 16px;
@@ -295,6 +489,12 @@
             margin-bottom: 14px;
             flex-wrap: wrap;
         }
+        .xui-instance-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
         .xui-instance-title {
             color: #0f172a;
             font-size: 14px;
@@ -303,6 +503,23 @@
         .xui-new-card {
             background: #fff;
             border-style: dashed;
+        }
+        .xui-inline-toggle {
+            display: grid;
+            gap: 12px;
+        }
+        .xui-inline-toggle .selector-trigger {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        }
+        .xui-inline-toggle.open .selector-trigger {
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.08);
+        }
+        .xui-inline-content {
+            display: grid;
+        }
+        .xui-inline-content[hidden] {
+            display: none;
         }
 
         .btn {
@@ -321,6 +538,17 @@
         .btn-primary {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .btn-compact {
+            padding: 8px 12px;
+            font-size: 13px;
         }
         .btn:hover {
             transform: translateY(-1px);
@@ -513,6 +741,50 @@
                             <input type="number" id="xuiExpireDays" min="1" step="1" value="{{ xui_expire_days }}">
                             <div class="setting-help">兑换码和 LDC 兑换生成的 3x-ui 用户默认有效期。</div>
                         </div>
+                        <div class="form-group full-width">
+                            <label>上架节点白名单</label>
+                            <div class="selector" id="xuiNodeSelector">
+                                <button type="button" class="selector-trigger" id="xuiNodeSelectorTrigger" aria-expanded="false">
+                                    <span class="selector-trigger-main">
+                                        <span class="selector-label" id="xuiNodeSelectorLabel">全部启用节点</span>
+                                        <span class="selector-subtitle" id="xuiNodeSelectorSubtitle">未单独勾选时，前台默认显示所有启用面板中的可用 vmess/ws 节点。</span>
+                                    </span>
+                                    <span class="selector-arrow" aria-hidden="true"></span>
+                                </button>
+                                <div class="selector-menu">
+                                    <input type="search" class="selector-search" id="xuiNodeSearch" placeholder="搜索面板、节点名、端口或路径">
+                                    <div class="selector-actions">
+                                        <button type="button" class="selector-action-btn" id="selectAllXuiNodes">全选</button>
+                                        <button type="button" class="selector-action-btn" id="clearAllXuiNodes">清空</button>
+                                    </div>
+                                    <div class="selector-options" id="xuiNodeSelectorOptions">
+                                        {% set current_instance = namespace(id=None) %}
+                                        {% for node_key, info in xui_inbounds.items() %}
+                                            {% if current_instance.id != info.xui_instance_id %}
+                                                {% if not loop.first %}</div>{% endif %}
+                                                {% set current_instance.id = info.xui_instance_id %}
+                                                <div class="selector-group" data-selector-group="{{ info.xui_instance_name|lower }}">
+                                                    <div class="selector-group-title">{{ info.xui_instance_name }}</div>
+                                            {% endif %}
+                                            <label class="selector-option" data-node-option data-search-text="{{ (info.xui_instance_name ~ ' ' ~ info.name ~ ' ' ~ info.port ~ ' ' ~ (info.ws_path or '') ~ ' ' ~ (info.host or ''))|lower }}">
+                                                <input type="checkbox" name="xui_enabled_nodes" value="{{ node_key }}" {% if xui_whitelist_enabled and node_key in xui_enabled_node_keys %}checked{% endif %}>
+                                                <span class="selector-option-main">
+                                                    <span class="selector-option-name">{{ info.xui_instance_name }} · {{ info.name }}</span>
+                                                    <span class="selector-option-meta">ID: {{ info.id }} / 端口: {{ info.port }} / {% if info.enable %}3x-ui 已启用{% else %}3x-ui 已禁用{% endif %}</span>
+                                                    <span class="selector-option-meta">路径: {{ info.ws_path or '-' }}{% if info.host %} / Host: {{ info.host }}{% endif %}</span>
+                                                </span>
+                                            </label>
+                                            {% if loop.last %}</div>{% endif %}
+                                        {% endfor %}
+                                        {% if not xui_inbounds %}
+                                        <div class="selector-empty">当前没有可选节点</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="selector-chips" id="xuiNodeSelectorChips"></div>
+                                </div>
+                            </div>
+                            <div class="setting-help">支持按面板分组查看和多选，交互更接近模型选择器。</div>
+                        </div>
                     </div>
                     <div class="setting-summary">
                         默认流量：{{ xui_traffic_limit }} GB；默认有效期：{{ xui_expire_days }} 天。第一个启用的面板会作为旧数据和兜底节点的默认面板。
@@ -523,10 +795,13 @@
                         <div class="xui-instance-card" data-xui-instance="{{ instance.id }}">
                             <div class="xui-instance-head">
                                 <div class="xui-instance-title">{{ instance.name }} · 面板 #{{ instance.id }}</div>
-                                <label class="settings-toggle">
-                                    <input type="checkbox" data-xui-field="enabled" {% if instance.enabled %}checked{% endif %}>
-                                    <span>启用</span>
-                                </label>
+                                <div class="xui-instance-actions">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" data-xui-field="enabled" {% if instance.enabled %}checked{% endif %}>
+                                        <span>启用</span>
+                                    </label>
+                                    <button type="button" class="btn btn-danger btn-compact" data-delete-xui-instance="{{ instance.id }}" data-delete-xui-name="{{ instance.name }}">删除</button>
+                                </div>
                             </div>
                             <div class="settings-grid">
                                 <div class="form-group">
@@ -540,37 +815,56 @@
                                 <div class="form-group">
                                     <label>3x-ui 用户名</label>
                                     <input type="text" data-xui-field="username" value="{{ instance.username }}" autocomplete="off">
+                                    <div class="setting-help">配置 API Token 后可留空；仅密码登录模式需要。</div>
                                 </div>
                                 <div class="form-group">
                                     <label>3x-ui 密码</label>
                                     <input type="password" data-xui-field="password" placeholder="{% if instance.password_set %}已设置，留空则不修改{% else %}请输入 3x-ui 密码{% endif %}" autocomplete="new-password">
                                     <div class="setting-help">不会回显当前密码；留空则保留原密码。</div>
                                 </div>
+                                <div class="form-group">
+                                    <label>API Token</label>
+                                    <input type="password" data-xui-field="api_token" placeholder="{% if instance.api_token_set %}已设置，留空则不修改{% else %}3x-ui 3.0.1 API Token{% endif %}" autocomplete="new-password">
+                                    <div class="setting-help">优先使用 Bearer Token；在 3x-ui 设置 - 安全 - API Token 获取。</div>
+                                </div>
                             </div>
                         </div>
                         {% endfor %}
 
-                        <div class="xui-instance-card xui-new-card" id="newXuiInstance">
-                            <div class="xui-instance-head">
-                                <div class="xui-instance-title">新增 3x-ui 面板</div>
-                                <span class="badge badge-neutral">可选</span>
-                            </div>
-                            <div class="settings-grid">
-                                <div class="form-group">
-                                    <label>面板名称</label>
-                                    <input type="text" id="newXuiName" placeholder="例如：香港面板" maxlength="64">
-                                </div>
-                                <div class="form-group">
-                                    <label>3x-ui 地址</label>
-                                    <input type="url" id="newXuiHost" placeholder="http://127.0.0.1:2053">
-                                </div>
-                                <div class="form-group">
-                                    <label>3x-ui 用户名</label>
-                                    <input type="text" id="newXuiUsername" autocomplete="off">
-                                </div>
-                                <div class="form-group">
-                                    <label>3x-ui 密码</label>
-                                    <input type="password" id="newXuiPassword" autocomplete="new-password">
+                        <div class="xui-instance-card xui-new-card xui-inline-toggle" id="newXuiSelector">
+                            <button type="button" class="selector-trigger" id="newXuiSelectorTrigger" aria-expanded="false">
+                                <span class="selector-trigger-main">
+                                    <span class="selector-label">新增 3x-ui 面板</span>
+                                    <span class="selector-subtitle">像 NewAPI 选择模型一样，点击展开紧凑录入面板。</span>
+                                </span>
+                                <span class="selector-arrow" aria-hidden="true"></span>
+                            </button>
+                            <div class="xui-inline-content" id="newXuiInstance" hidden>
+                                <div class="inline-panel">
+                                    <div class="settings-grid">
+                                        <div class="form-group">
+                                            <label>面板名称</label>
+                                            <input type="text" id="newXuiName" placeholder="例如：香港面板" maxlength="64">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>3x-ui 地址</label>
+                                            <input type="url" id="newXuiHost" placeholder="http://127.0.0.1:2053">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>3x-ui 用户名</label>
+                                            <input type="text" id="newXuiUsername" autocomplete="off">
+                                            <div class="setting-help">使用 API Token 时可留空。</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>3x-ui 密码</label>
+                                            <input type="password" id="newXuiPassword" autocomplete="new-password">
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label>API Token</label>
+                                            <input type="password" id="newXuiApiToken" autocomplete="new-password">
+                                            <div class="setting-help">推荐 3x-ui 3.0.1 使用 API Token；填写后不需要账号密码登录。</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -578,18 +872,6 @@
 
                     <div class="setting-summary">
                         节点白名单为空时，前台默认显示所有启用面板中的可用 vmess/ws 节点；勾选后，只上架选中的节点。不同面板的相同入站 ID 会按面板区分，不会串节点。
-                    </div>
-                    <div class="inbound-list">
-                        {% for node_key, info in xui_inbounds.items() %}
-                        <label class="inbound-item">
-                            <input type="checkbox" name="xui_enabled_nodes" value="{{ node_key }}" {% if xui_whitelist_enabled and node_key in xui_enabled_node_keys %}checked{% endif %}>
-                            <span class="inbound-main">
-                                <span class="inbound-name">{{ info.xui_instance_name }} · {{ info.name }}</span>
-                                <span class="inbound-meta">面板 #{{ info.xui_instance_id }} / ID: {{ info.id }} / 端口: {{ info.port }} / {% if info.enable %}3x-ui 已启用{% else %}3x-ui 已禁用{% endif %}</span>
-                                <span class="inbound-meta">路径: {{ info.ws_path or '-' }}{% if info.host %} / Host: {{ info.host }}{% endif %}</span>
-                            </span>
-                        </label>
-                        {% endfor %}
                     </div>
                     <button type="submit" class="btn btn-primary">保存 3x-ui 设置</button>
                 </form>
@@ -621,6 +903,10 @@
                         <h3>兑换比例</h3>
                         <div class="number">1GB = {{ ldc_exchange_ratio }}</div>
                     </div>
+                    <div class="summary-card">
+                        <h3>下次重置</h3>
+                        <div class="number">{{ ldc_quota_cycle_end }}</div>
+                    </div>
                 </div>
 
                 {% if ldc_enabled and not ldc_effective_enabled %}
@@ -646,10 +932,20 @@
                             <input type="number" id="ldcExchangeRatio" min="0.01" step="0.01" value="{{ ldc_exchange_ratio }}">
                             <div class="setting-help">例如填 1 表示 1GB = 1 积分，填 1.5 表示 1GB = 1.5 积分。</div>
                         </div>
+                        <div class="form-group">
+                            <label>每月重置日期</label>
+                            <input type="number" id="ldcQuotaResetDay" min="1" max="31" step="1" value="{{ ldc_quota_reset_day }}">
+                            <div class="setting-help">例如填 1 表示每月 1 号重置；小月没有该日期时按当月最后一天执行。</div>
+                        </div>
+                        <div class="form-group">
+                            <label>重置时间（北京时间）</label>
+                            <input type="time" id="ldcQuotaResetTime" value="{{ ldc_quota_reset_time }}">
+                            <div class="setting-help">到这个时间后开启新的月度额度池，未到期的旧订阅仍会占用新周期额度。</div>
+                        </div>
                     </div>
 
                     <div class="setting-summary">
-                        当前总上限：{{ ldc_total_limit_text }}；已占用（含待支付）：{{ ldc_used_gb }} GB；已完成/已支付：{{ ldc_confirmed_used_gb }} GB；剩余：{{ ldc_remaining_text }}；当前比例：1GB = {{ ldc_exchange_ratio }} 积分。
+                        当前周期：{{ ldc_quota_cycle_text }}；当前总上限：{{ ldc_total_limit_text }}；已占用（含待支付和未到期跨周期订单）：{{ ldc_used_gb }} GB；已完成/已支付未到期：{{ ldc_confirmed_used_gb }} GB；剩余：{{ ldc_remaining_text }}；当前比例：1GB = {{ ldc_exchange_ratio }} 积分。
                     </div>
 
                     <button type="submit" class="btn btn-primary">保存 LDC 设置</button>
@@ -760,6 +1056,125 @@
             setTimeout(() => window.location.reload(), 500);
         }
 
+        function closeSelectors(except = null) {
+            document.querySelectorAll('.selector').forEach(selector => {
+                if (selector === except) {
+                    return;
+                }
+                selector.classList.remove('open');
+                selector.querySelector('.selector-trigger')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        document.querySelectorAll('.selector').forEach(selector => {
+            const trigger = selector.querySelector('.selector-trigger');
+            if (!trigger) {
+                return;
+            }
+            trigger.addEventListener('click', () => {
+                const willOpen = !selector.classList.contains('open');
+                closeSelectors(selector);
+                selector.classList.toggle('open', willOpen);
+                trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            });
+        });
+
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.selector')) {
+                closeSelectors();
+            }
+        });
+
+        const newXuiSelector = document.getElementById('newXuiSelector');
+        const newXuiSelectorTrigger = document.getElementById('newXuiSelectorTrigger');
+        const newXuiInstance = document.getElementById('newXuiInstance');
+
+        function setNewXuiSelectorOpen(open) {
+            if (!newXuiSelector || !newXuiSelectorTrigger || !newXuiInstance) {
+                return;
+            }
+            newXuiSelector.classList.toggle('open', open);
+            newXuiSelectorTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+            newXuiInstance.hidden = !open;
+        }
+
+        newXuiSelectorTrigger?.addEventListener('click', () => {
+            const willOpen = !newXuiSelector.classList.contains('open');
+            setNewXuiSelectorOpen(willOpen);
+        });
+
+        document.addEventListener('click', event => {
+            if (newXuiSelector && !event.target.closest('#newXuiSelector')) {
+                setNewXuiSelectorOpen(false);
+            }
+        });
+
+        const xuiNodeSelector = document.getElementById('xuiNodeSelector');
+        if (xuiNodeSelector) {
+            const nodeSearch = document.getElementById('xuiNodeSearch');
+            const nodeLabel = document.getElementById('xuiNodeSelectorLabel');
+            const nodeSubtitle = document.getElementById('xuiNodeSelectorSubtitle');
+            const nodeChips = document.getElementById('xuiNodeSelectorChips');
+            const nodeOptions = Array.from(xuiNodeSelector.querySelectorAll('[data-node-option]'));
+            const nodeCheckboxes = nodeOptions.map(option => option.querySelector('input[name="xui_enabled_nodes"]')).filter(Boolean);
+
+            function updateNodeSelectorSummary() {
+                const selectedOptions = nodeOptions.filter(option => option.querySelector('input[name="xui_enabled_nodes"]')?.checked);
+                nodeChips.innerHTML = '';
+                if (!selectedOptions.length) {
+                    nodeLabel.textContent = '全部启用节点';
+                    nodeSubtitle.textContent = '未单独勾选时，前台默认显示所有启用面板中的可用 vmess/ws 节点。';
+                    return;
+                }
+                nodeLabel.textContent = `已选 ${selectedOptions.length} 个节点`;
+                nodeSubtitle.textContent = selectedOptions.slice(0, 3).map(option => option.querySelector('.selector-option-name')?.textContent || '').filter(Boolean).join('；');
+                selectedOptions.slice(0, 6).forEach(option => {
+                    const chip = document.createElement('span');
+                    chip.className = 'selector-chip';
+                    chip.textContent = option.querySelector('.selector-option-name')?.textContent || option.querySelector('input')?.value || '';
+                    nodeChips.appendChild(chip);
+                });
+            }
+
+            function filterNodeOptions() {
+                const keyword = (nodeSearch?.value || '').trim().toLowerCase();
+                xuiNodeSelector.querySelectorAll('.selector-group').forEach(group => {
+                    let visibleCount = 0;
+                    group.querySelectorAll('[data-node-option]').forEach(option => {
+                        const searchText = option.dataset.searchText || '';
+                        const visible = !keyword || searchText.includes(keyword);
+                        option.hidden = !visible;
+                        if (visible) {
+                            visibleCount += 1;
+                        }
+                    });
+                    group.hidden = visibleCount === 0;
+                });
+            }
+
+            nodeCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateNodeSelectorSummary);
+            });
+
+            document.getElementById('selectAllXuiNodes')?.addEventListener('click', () => {
+                nodeCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                updateNodeSelectorSummary();
+            });
+
+            document.getElementById('clearAllXuiNodes')?.addEventListener('click', () => {
+                nodeCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                updateNodeSelectorSummary();
+            });
+
+            nodeSearch?.addEventListener('input', filterNodeOptions);
+            updateNodeSelectorSummary();
+            filterNodeOptions();
+        }
+
         document.querySelectorAll('[data-toggle-password]').forEach(button => {
             const input = document.getElementById(button.dataset.togglePassword);
             if (!input) {
@@ -818,6 +1233,7 @@
             formData.append('new_xui_host', document.getElementById('newXuiHost').value);
             formData.append('new_xui_username', document.getElementById('newXuiUsername').value);
             formData.append('new_xui_password', document.getElementById('newXuiPassword').value);
+            formData.append('new_xui_api_token', document.getElementById('newXuiApiToken').value);
 
             document.querySelectorAll('input[name="xui_enabled_nodes"]:checked').forEach(input => {
                 formData.append('xui_enabled_nodes', input.value);
@@ -836,6 +1252,32 @@
             }
         });
 
+        document.querySelectorAll('[data-delete-xui-instance]').forEach(button => {
+            button.addEventListener('click', async function() {
+                const instanceId = this.dataset.deleteXuiInstance;
+                const instanceName = this.dataset.deleteXuiName || `3x-ui #${instanceId}`;
+                const confirmed = confirm(`确认删除 ${instanceName} 吗？如果该面板已被兑换码、用户或订单引用，将不会删除。`);
+                if (!confirmed) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('_csrf_token', csrfToken);
+
+                try {
+                    const data = await submitForm(`/admin/xui-instances/${instanceId}/delete`, formData);
+                    if (data.success) {
+                        showToast(data.msg || '3x-ui 面板已删除');
+                        reloadSoon();
+                    } else {
+                        alert(data.msg || '删除失败');
+                    }
+                } catch (error) {
+                    alert('删除失败');
+                }
+            });
+        });
+
         document.getElementById('ldcSettingsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData();
@@ -843,6 +1285,8 @@
             formData.append('ldc_enabled', document.getElementById('ldcEnabled').checked ? '1' : '0');
             formData.append('ldc_total_limit_gb', document.getElementById('ldcTotalLimit').value);
             formData.append('ldc_exchange_ratio', document.getElementById('ldcExchangeRatio').value);
+            formData.append('ldc_quota_reset_day', document.getElementById('ldcQuotaResetDay').value);
+            formData.append('ldc_quota_reset_time', document.getElementById('ldcQuotaResetTime').value);
 
             try {
                 const data = await submitForm('/admin/ldc-settings', formData);
