@@ -285,6 +285,7 @@ ADMIN_PASSWORD=admin
 
 ```text
 .
+├── CHANGELOG.md
 ├── app.py
 ├── start.sh
 ├── requirements.txt
