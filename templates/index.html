@@ -255,24 +255,45 @@
             line-height: 1.45;
             margin-bottom: 14px;
         }
-        .announcement {
-            margin-bottom: 16px;
-            padding: 13px 14px;
-            border: 1px solid #bfdbfe;
-            border-radius: 14px;
-            background: #eff6ff;
-            color: #1e3a8a;
+        .announcement-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.38);
+        }
+        .announcement-modal.show {
+            display: flex;
+        }
+        .announcement-dialog {
+            width: min(420px, 100%);
+            max-height: min(72vh, 560px);
+            padding: 20px;
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            display: flex;
+            flex-direction: column;
         }
         .announcement-title {
-            font-size: 13px;
+            color: #0f172a;
+            font-size: 17px;
             font-weight: 700;
-            margin-bottom: 6px;
+            margin-bottom: 12px;
         }
         .announcement-content {
-            font-size: 13px;
-            line-height: 1.55;
+            color: #334155;
+            font-size: 14px;
+            line-height: 1.65;
             white-space: pre-wrap;
             overflow-wrap: anywhere;
+            overflow-y: auto;
+        }
+        .announcement-close {
+            margin-top: 18px;
         }
         .turnstile-box {
             margin: 14px 0 4px;
@@ -501,13 +522,6 @@
             <p class="subtitle">{% if ldc_enabled %}兑换码或 LDC 积分，都可以直接换订阅{% else %}输入兑换码即可生成订阅{% endif %}</p>
         </div>
 
-        {% if announcement_enabled %}
-        <div class="announcement">
-            <div class="announcement-title">{{ announcement_title }}</div>
-            <div class="announcement-content">{{ announcement_content }}</div>
-        </div>
-        {% endif %}
-
         <div class="tabs">
             <div class="tab active" data-tab="redeem">兑换码兑换</div>
             {% if ldc_enabled %}
@@ -685,6 +699,16 @@
 
     <div class="toast" id="toast">已复制到剪贴板</div>
 
+    {% if announcement_enabled %}
+    <div class="announcement-modal" id="announcementModal" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">
+        <div class="announcement-dialog">
+            <div class="announcement-title" id="announcementTitle">{{ announcement_title }}</div>
+            <div class="announcement-content">{{ announcement_content }}</div>
+            <button type="button" class="btn announcement-close" id="announcementClose">关闭</button>
+        </div>
+    </div>
+    {% endif %}
+
     {% if turnstile_enabled %}
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     {% endif %}
@@ -700,6 +724,36 @@
         const result = document.getElementById('result');
         const tipsPanels = document.querySelectorAll('.tips-panel');
         const validTabs = new Set(Array.from(tabs).map(tab => tab.dataset.tab));
+        const announcementModal = document.getElementById('announcementModal');
+        const announcementClose = document.getElementById('announcementClose');
+        const announcementDismissKey = 'redeem_announcement_dismissed';
+
+        function showAnnouncementModal() {
+            if (!announcementModal || sessionStorage.getItem(announcementDismissKey) === '1') {
+                return;
+            }
+            announcementModal.classList.add('show');
+        }
+
+        function closeAnnouncementModal() {
+            if (!announcementModal) {
+                return;
+            }
+            sessionStorage.setItem(announcementDismissKey, '1');
+            announcementModal.classList.remove('show');
+        }
+
+        announcementClose?.addEventListener('click', closeAnnouncementModal);
+        announcementModal?.addEventListener('click', event => {
+            if (event.target === announcementModal) {
+                closeAnnouncementModal();
+            }
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && announcementModal?.classList.contains('show')) {
+                closeAnnouncementModal();
+            }
+        });
 
         function getInitialTab() {
             const params = new URLSearchParams(window.location.search);
@@ -793,6 +847,7 @@
         });
 
         activateTab(getInitialTab(), false);
+        showAnnouncementModal();
 
         function setLoading(visible, text = '正在处理中...') {
             loading.style.display = visible ? 'block' : 'none';
