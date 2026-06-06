@@ -185,6 +185,9 @@ APP_SETTINGS_DEFAULTS = {
     'ldc_exchange_ratio': '1',
     'ldc_quota_reset_day': '1',
     'ldc_quota_reset_time': '00:00',
+    'announcement_enabled': '0',
+    'announcement_title': '公告',
+    'announcement_content': '',
     'turnstile_enabled': '1' if os.getenv('TURNSTILE_SITE_KEY') and os.getenv('TURNSTILE_SECRET_KEY') else '0',
     'turnstile_site_key': os.getenv('TURNSTILE_SITE_KEY', '').strip(),
     'turnstile_secret_key': os.getenv('TURNSTILE_SECRET_KEY', '').strip(),
@@ -1178,6 +1181,20 @@ def get_turnstile_config(conn=None):
     }
 
 
+def get_announcement_config(conn=None):
+    """读取前台公告配置。"""
+    settings = load_app_settings(conn)
+    enabled_setting = parse_bool(settings.get('announcement_enabled'), False)
+    title = (settings.get('announcement_title') or '公告').strip() or '公告'
+    content = (settings.get('announcement_content') or '').strip()
+    return {
+        'enabled_setting': enabled_setting,
+        'enabled': enabled_setting and bool(content),
+        'title': title,
+        'content': content,
+    }
+
+
 def normalize_turnstile_remote_ip(remote_ip):
     """仅在拿到真实公网 IP 时才上传给 Turnstile。"""
     text = str(remote_ip or '').split(',')[0].strip()
@@ -1945,6 +1962,7 @@ def index():
     ldc_runtime = get_ldc_runtime_config(conn)
     xui_runtime = get_xui_runtime_config(conn)
     turnstile_config = get_turnstile_config(conn)
+    announcement_config = get_announcement_config(conn)
     conn.close()
 
     ldc_default_traffic = min(
@@ -1968,6 +1986,9 @@ def index():
         ldc_total_limit_text=ldc_limit_text,
         ldc_used_text=ldc_used_text,
         ldc_remaining_text=ldc_remaining_text,
+        announcement_enabled=announcement_config['enabled'],
+        announcement_title=announcement_config['title'],
+        announcement_content=announcement_config['content'],
         turnstile_enabled=turnstile_config['enabled'],
         turnstile_site_key=turnstile_config['site_key']
     )
@@ -1976,6 +1997,11 @@ def index():
 @app.route('/ldc')
 def ldc_page():
     """LDC 兑换页直达入口"""
+    conn = get_db()
+    ldc_runtime = get_ldc_runtime_config(conn)
+    conn.close()
+    if not ldc_runtime['enabled']:
+        return redirect(url_for('index'))
     return redirect(url_for('index', tab='ldc'))
 
 
@@ -2534,6 +2560,7 @@ def admin_settings():
     ldc_runtime = get_ldc_runtime_config(conn)
     xui_runtime = get_xui_runtime_config(conn)
     turnstile_config = get_turnstile_config(conn)
+    announcement_config = get_announcement_config(conn)
     xui_instances = get_xui_instances(conn, include_disabled=True)
     xui_inbounds = fetch_all_xui_inbounds(include_disabled=True, include_disabled_instances=True) or default_inbounds_for_instance()
     xui_enabled_node_keys = parse_node_key_list(settings.get('xui_enabled_nodes'), default_instance_id=xui_runtime['id'])
@@ -2568,6 +2595,10 @@ def admin_settings():
         ldc_quota_reset_time=ldc_runtime['quota_reset_time'],
         ldc_quota_cycle_text=ldc_quota_cycle_text,
         ldc_quota_cycle_end=format_dt(ldc_runtime['quota_cycle_end']),
+        announcement_enabled=announcement_config['enabled_setting'],
+        announcement_effective_enabled=announcement_config['enabled'],
+        announcement_title=announcement_config['title'],
+        announcement_content=announcement_config['content'],
         turnstile_enabled=turnstile_config['enabled_setting'],
         turnstile_effective_enabled=turnstile_config['enabled'],
         turnstile_site_key=turnstile_config['site_key'],
@@ -2626,6 +2657,36 @@ def update_ldc_settings():
     })
 
     return jsonify({'success': True, 'msg': 'LDC 配置已保存'})
+
+
+@app.route('/admin/announcement-settings', methods=['POST'])
+@admin_required
+@csrf_required
+def update_announcement_settings():
+    """更新前台公告配置。"""
+    enabled = '1' if request.form.get('announcement_enabled') in ('1', 'on', 'true', 'yes') else '0'
+    title = (request.form.get('announcement_title') or '').strip()
+    content = (request.form.get('announcement_content') or '').strip()
+
+    if enabled == '1' and not content:
+        return jsonify({'success': False, 'msg': '开启公告时必须填写公告内容'})
+
+    if not title:
+        title = '公告'
+
+    if len(title) > 80:
+        return jsonify({'success': False, 'msg': '公告标题不能超过 80 个字符'})
+
+    if len(content) > 2000:
+        return jsonify({'success': False, 'msg': '公告内容不能超过 2000 个字符'})
+
+    save_app_settings({
+        'announcement_enabled': enabled,
+        'announcement_title': title,
+        'announcement_content': content,
+    })
+
+    return jsonify({'success': True, 'msg': '公告配置已保存'})
 
 
 @app.route('/admin/turnstile-settings', methods=['POST'])

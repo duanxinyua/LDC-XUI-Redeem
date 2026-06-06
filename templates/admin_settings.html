@@ -182,7 +182,8 @@
             margin-bottom: 6px;
             font-weight: 500;
         }
-        .form-group input {
+        .form-group input,
+        .form-group textarea {
             width: 100%;
             padding: 12px 16px;
             border: 1.5px solid #e5e5e5;
@@ -191,7 +192,14 @@
             transition: all 0.2s;
             background: white;
         }
-        .form-group input:focus {
+        .form-group textarea {
+            min-height: 140px;
+            resize: vertical;
+            line-height: 1.55;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
             outline: none;
             border-color: #4facfe;
             box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
@@ -665,8 +673,12 @@
                     <span class="menu-index">3</span>
                     <span>LDC 兑换</span>
                 </a>
-                <a href="#turnstile" class="settings-menu-link" data-target="turnstile">
+                <a href="#announcement" class="settings-menu-link" data-target="announcement">
                     <span class="menu-index">4</span>
+                    <span>公告</span>
+                </a>
+                <a href="#turnstile" class="settings-menu-link" data-target="turnstile">
+                    <span class="menu-index">5</span>
                     <span>Turnstile</span>
                 </a>
             </nav>
@@ -949,6 +961,42 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">保存 LDC 设置</button>
+                </form>
+            </div>
+                </div>
+
+                <div class="section" id="announcement">
+            <div class="section-header">
+                <h2>前台公告</h2>
+                <span class="badge {% if announcement_effective_enabled %}badge-success{% elif announcement_enabled %}badge-warning{% else %}badge-neutral{% endif %}">
+                    {% if announcement_effective_enabled %}已显示{% elif announcement_enabled %}缺少内容{% else %}未开启{% endif %}
+                </span>
+            </div>
+            <div class="section-body">
+                <form class="settings-form" id="announcementSettingsForm">
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="announcementEnabled" {% if announcement_enabled %}checked{% endif %}>
+                        <span>显示前台公告</span>
+                    </label>
+
+                    <div class="settings-grid">
+                        <div class="form-group full-width">
+                            <label>公告标题</label>
+                            <input type="text" id="announcementTitle" value="{{ announcement_title }}" maxlength="80" placeholder="公告">
+                            <div class="setting-help">标题为空时会自动使用“公告”。</div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>公告内容</label>
+                            <textarea id="announcementContent" maxlength="2000" placeholder="请输入需要展示给用户的公告内容">{{ announcement_content }}</textarea>
+                            <div class="setting-help">支持多行文本，前台会保留换行；开启公告时内容不能为空。</div>
+                        </div>
+                    </div>
+
+                    <div class="setting-summary">
+                        当前状态：{% if announcement_effective_enabled %}前台正在显示公告{% elif announcement_enabled %}已开启但内容为空，前台不会显示{% else %}未开启，前台不显示公告{% endif %}。
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存公告设置</button>
                 </form>
             </div>
                 </div>
@@ -1292,6 +1340,27 @@
                 const data = await submitForm('/admin/ldc-settings', formData);
                 if (data.success) {
                     showToast(data.msg || 'LDC 配置已保存');
+                    reloadSoon();
+                } else {
+                    alert(data.msg || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        document.getElementById('announcementSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('_csrf_token', csrfToken);
+            formData.append('announcement_enabled', document.getElementById('announcementEnabled').checked ? '1' : '0');
+            formData.append('announcement_title', document.getElementById('announcementTitle').value);
+            formData.append('announcement_content', document.getElementById('announcementContent').value);
+
+            try {
+                const data = await submitForm('/admin/announcement-settings', formData);
+                if (data.success) {
+                    showToast(data.msg || '公告配置已保存');
                     reloadSoon();
                 } else {
                     alert(data.msg || '保存失败');

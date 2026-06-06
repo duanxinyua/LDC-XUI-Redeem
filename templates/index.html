@@ -255,6 +255,25 @@
             line-height: 1.45;
             margin-bottom: 14px;
         }
+        .announcement {
+            margin-bottom: 16px;
+            padding: 13px 14px;
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+        .announcement-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .announcement-content {
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
         .turnstile-box {
             margin: 14px 0 4px;
             min-height: 78px;
@@ -479,12 +498,21 @@
         <div class="logo">
             <div class="logo-icon">⚡</div>
             <h1>节点兑换中心</h1>
-            <p class="subtitle">兑换码或 LDC 积分，都可以直接换订阅</p>
+            <p class="subtitle">{% if ldc_enabled %}兑换码或 LDC 积分，都可以直接换订阅{% else %}输入兑换码即可生成订阅{% endif %}</p>
         </div>
+
+        {% if announcement_enabled %}
+        <div class="announcement">
+            <div class="announcement-title">{{ announcement_title }}</div>
+            <div class="announcement-content">{{ announcement_content }}</div>
+        </div>
+        {% endif %}
 
         <div class="tabs">
             <div class="tab active" data-tab="redeem">兑换码兑换</div>
+            {% if ldc_enabled %}
             <div class="tab" data-tab="ldc">LDC 积分兑换</div>
+            {% endif %}
             <div class="tab" data-tab="query">查询订阅</div>
         </div>
 
@@ -535,8 +563,9 @@
             {% endif %}
         </div>
 
+        {% if ldc_enabled %}
         <div id="ldcTab" class="tab-content">
-            {% if ldc_enabled and inbounds_available %}
+            {% if inbounds_available %}
             <form id="ldcForm">
                 <div class="notice">
 	                    当前兑换比例：1GB = {{ ldc_exchange_ratio }} LDC 积分。总流量上限：{{ ldc_total_limit_text }}，已占用（含待支付）：{{ ldc_used_text }}，剩余：{{ ldc_remaining_text }}。
@@ -582,24 +611,22 @@
                 <button type="submit" class="btn">前往 LDC 支付</button>
             </form>
             {% else %}
-            <div class="notice">
-                {% if ldc_enabled and not inbounds_available %}
-                当前没有可用节点，请联系管理员上架节点后再使用 LDC 兑换。
-                {% elif ldc_enabled_setting %}
-                当前服务器还没有配置 LDC 参数，暂时不能使用积分兑换。
-                {% else %}
-                当前未开启 LDC 积分兑换。
-                {% endif %}
-            </div>
+            <div class="notice">当前没有可用节点，请联系管理员上架节点后再使用 LDC 兑换。</div>
             <button type="button" class="btn" disabled>暂不可用</button>
             {% endif %}
         </div>
+        {% endif %}
 
         <div id="queryTab" class="tab-content">
             <form id="queryForm">
                 <div class="input-group">
+                    {% if ldc_enabled %}
                     <label>兑换码 / LDC 订单号</label>
                     <input type="text" id="queryCode" name="queryCode" placeholder="输入已使用的兑换码或 LDC 订单号查询" maxlength="64" required>
+                    {% else %}
+                    <label>兑换码</label>
+                    <input type="text" id="queryCode" name="queryCode" placeholder="输入已使用的兑换码查询" maxlength="64" required>
+                    {% endif %}
                 </div>
                 {% if turnstile_enabled %}
                 <div class="turnstile-box" id="queryTurnstile"></div>
@@ -629,22 +656,28 @@
                     <li>兑换完成后，请保存兑换码或订阅链接，后续可在查询页用兑换码找回订阅。</li>
                 </ul>
             </div>
+            {% if ldc_enabled %}
             <div class="tips-panel" data-tips="ldc">
                 <h4>LDC 积分兑换说明</h4>
                 <ul>
                     <li>当前兑换比例：1GB = {{ ldc_exchange_ratio }} LDC 积分，该比例与后台 LDC 设置同步。</li>
                     <li>当前支持兑换 {{ ldc_min_traffic }} - {{ ldc_max_traffic }} GB，系统默认有效期 {{ default_days }} 天。</li>
-	                    <li>当前总流量上限：{{ ldc_total_limit_text }}，已占用（含待支付）：{{ ldc_used_text }}，剩余：{{ ldc_remaining_text }}。</li>
+		                    <li>当前总流量上限：{{ ldc_total_limit_text }}，已占用（含待支付）：{{ ldc_used_text }}，剩余：{{ ldc_remaining_text }}。</li>
                     <li>支付完成后会自动生成订阅；如关闭支付返回页，可在查询页输入 LDC 订单号找回订阅。</li>
                 </ul>
             </div>
+            {% endif %}
             <div class="tips-panel" data-tips="query">
                 <h4>查询订阅说明</h4>
                 <ul>
                     <li>支持输入已使用的兑换码，找回兑换码生成的订阅链接。</li>
+                    {% if ldc_enabled %}
                     <li>支持输入已完成的 LDC 订单号，找回 LDC 积分兑换生成的订阅链接。</li>
                     <li>如果 LDC 订单已支付但订阅还未生成，系统会尝试自动补生成订阅。</li>
                     <li>未使用的兑换码、未支付的 LDC 订单，暂时查询不到订阅链接。</li>
+                    {% else %}
+                    <li>未使用的兑换码暂时查询不到订阅链接。</li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -666,7 +699,7 @@
         const loadingText = document.getElementById('loadingText');
         const result = document.getElementById('result');
         const tipsPanels = document.querySelectorAll('.tips-panel');
-        const validTabs = new Set(['redeem', 'ldc', 'query']);
+        const validTabs = new Set(Array.from(tabs).map(tab => tab.dataset.tab));
 
         function getInitialTab() {
             const params = new URLSearchParams(window.location.search);
@@ -1028,7 +1061,11 @@
             const btn = document.querySelector('#queryForm .btn');
 
             if (!code) {
+                {% if ldc_enabled %}
                 alert('请输入兑换码或 LDC 订单号');
+                {% else %}
+                alert('请输入兑换码');
+                {% endif %}
                 return;
             }
 
